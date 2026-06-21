@@ -1,11 +1,10 @@
 "use client";
 
+import { BACKEND_URL } from "@/config";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner"
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3001';
 
 export default function Home() {
 

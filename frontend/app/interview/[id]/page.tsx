@@ -1,10 +1,8 @@
 "use client";
 
+import { BACKEND_URL } from "@/config";
 import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
-
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
 
 export default function InterviewPage({
   params,

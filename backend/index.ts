@@ -3,6 +3,7 @@ import http from "http";
 import cors from "cors";
 import { Server } from "socket.io";
 import speech from "@google-cloud/speech";
+import { PORT } from "./config";
 
 const app = express();
 const server = http.createServer(app);
@@ -62,7 +63,6 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = process.env.PORT ?? 3001;
 
 app.post("/api/v1/interview", (req, res) => {
   const { githubUsername } = req.body;
