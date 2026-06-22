@@ -51,12 +51,12 @@ export function registerSocketHandlers(
     recognizeStream.end();
   });
 
-  socket.on("answerDone", () => {
+  socket.on("answerDone", async () => {
     console.log("Final transcript:", fullMessage);
     conversation.addMessage(fullMessage, "interviewee");
     fullMessage = "";
     utterances = [];
 
-    callLLM(conversation);
+    await callLLM(conversation, socket);
   });
 }
