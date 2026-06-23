@@ -9,19 +9,25 @@ export function registerSocketHandlers(
 ): void {
   const conversation = new Conversation();
 
+  let sampleRate = 48000; // updated by sttConfig event from frontend
   let fullMessage = "";
   let utterances: string[] = [];
   let silenceTimer: ReturnType<typeof setTimeout> | null = null;
   let isProcessing = false;
   let recognizeStream: ReturnType<SpeechClient["streamingRecognize"]> | null = null;
 
+  socket.on("sttConfig", ({ sampleRate: rate }: { sampleRate: number }) => {
+    sampleRate = rate;
+    console.log(`[STT] Sample rate set to ${sampleRate} Hz`);
+  });
+
   function startRecognizeStream() {
     if (recognizeStream) return;
     recognizeStream = speechClient
       .streamingRecognize({
         config: {
-          encoding: "WEBM_OPUS",
-          sampleRateHertz: 48000,
+          encoding: "LINEAR16",
+          sampleRateHertz: sampleRate,
           languageCode: "en-US",
           enableAutomaticPunctuation: true,
         },
@@ -30,6 +36,7 @@ export function registerSocketHandlers(
       .on("error", (err) => {
         console.error("STT Error:", err);
         socket.emit("stt-error", err.message);
+        recognizeStream = null; // allow a fresh stream on next audioChunk
       })
       .on("data", (data) => {
         const transcript = data.results?.[0]?.alternatives?.[0]?.transcript ?? "";
@@ -46,7 +53,7 @@ export function registerSocketHandlers(
 
   function resetSilenceTimer() {
     if (silenceTimer) clearTimeout(silenceTimer);
-    silenceTimer = setTimeout(() => {
+    silenceTimer = setTimeout(async () => {
       if (!fullMessage || isProcessing) return;
       isProcessing = true;
 
@@ -55,9 +62,15 @@ export function registerSocketHandlers(
       fullMessage = "";
       utterances = [];
 
-      callLLM(conversation, socket).finally(() => {
-        isProcessing = false;
-      });
+      // close stale stream before LLM (no audio during TTS anyway)
+      if (recognizeStream) {
+        recognizeStream.destroy();
+        recognizeStream = null;
+      }
+
+      await callLLM(conversation, socket);
+      isProcessing = false;
+      socket.emit("readyForAnswer");
     }, 3500);
   }
 
@@ -68,27 +81,32 @@ export function registerSocketHandlers(
     }
   }
 
-  socket.on("audioChunk", (chunk: ArrayBuffer) => {
-    console.log("[audioChunk] received", chunk.byteLength, "bytes");
+  socket.on("audioChunk", (chunk: Buffer) => {
     startRecognizeStream();
     if (!recognizeStream) return;
-    recognizeStream.write(Buffer.from(chunk));
+    recognizeStream.write(chunk);
     resetSilenceTimer();
-  });
-
-  socket.on("stopRecording", () => {
-    clearSilenceTimer();
   });
 
   socket.on("disconnect", () => {
     console.log("Client disconnected");
     clearSilenceTimer();
+    if (recognizeStream) {
+      recognizeStream.destroy();
+      recognizeStream = null;
+    }
   });
 
   socket.on("answerDone", async () => {
     clearSilenceTimer();
     if (isProcessing) return;
     isProcessing = true;
+
+    // close stale stream — no audio during TTS playback
+    if (recognizeStream) {
+      recognizeStream.destroy();
+      recognizeStream = null;
+    }
 
     console.log("Final transcript:", fullMessage);
     conversation.addMessage(fullMessage, "interviewee");
@@ -97,5 +115,6 @@ export function registerSocketHandlers(
 
     await callLLM(conversation, socket);
     isProcessing = false;
+    socket.emit("readyForAnswer"); // tell frontend to start recording again
   });
 }
