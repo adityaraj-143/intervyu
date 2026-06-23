@@ -4,7 +4,6 @@ import { BACKEND_URL } from "@/config";
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-
 export default function InterviewPage() {
   const ttsCtxRef = useRef<AudioContext | null>(null);
   const micCtxRef = useRef<AudioContext | null>(null);
@@ -13,6 +12,8 @@ export default function InterviewPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const scheduledStopRef = useRef(0);
+  // flipped to false on unmount so any in-flight getUserMedia resolves don't re-open mic
+  const mountedRef = useRef(true);
 
   function ensureTtsCtx() {
     if (!ttsCtxRef.current || ttsCtxRef.current.state === "closed") {
@@ -33,14 +34,19 @@ export default function InterviewPage() {
   }
 
   function startRecording(socket: ReturnType<typeof io>) {
-    stopMic(); // clean up previous session
+    stopMic();
 
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((stream) => {
+        // If the user navigated away while waiting for mic permission, kill it immediately
+        if (!mountedRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
         streamRef.current = stream;
 
-        // Use the native system sample rate — no resampling artifacts
         const micCtx = new AudioContext();
         micCtxRef.current = micCtx;
         const actualRate = micCtx.sampleRate;
@@ -50,10 +56,10 @@ export default function InterviewPage() {
         const processor = micCtx.createScriptProcessor(4096, 1, 1);
         processorRef.current = processor;
 
-        // Tell the backend the actual sample rate BEFORE sending any chunks
         socket.emit("sttConfig", { sampleRate: actualRate });
 
         processor.onaudioprocess = (e) => {
+          if (!mountedRef.current) return; // stop sending after unmount
           const float32 = e.inputBuffer.getChannelData(0);
           const int16 = new Int16Array(float32.length);
           for (let i = 0; i < float32.length; i++) {
@@ -71,6 +77,8 @@ export default function InterviewPage() {
   }
 
   useEffect(() => {
+    mountedRef.current = true;
+
     const socket = io(BACKEND_URL);
     socketRef.current = socket;
 
@@ -113,7 +121,6 @@ export default function InterviewPage() {
       source.start(when);
     });
 
-    // Backend finished speaking — restart mic for the next answer
     socket.on("readyForAnswer", () => {
       console.log("[interview] ready for next answer, restarting mic");
       answerDoneRef.current = false;
@@ -130,8 +137,9 @@ export default function InterviewPage() {
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      mountedRef.current = false; // prevent any pending getUserMedia from re-opening mic
       window.removeEventListener("keydown", handleKeyDown);
-      stopMic();
+      stopMic(); // stops all tracks → clears browser mic indicator
       socket.disconnect();
       ttsCtxRef.current?.close();
       ttsCtxRef.current = null;
@@ -142,7 +150,6 @@ export default function InterviewPage() {
     if (answerDoneRef.current) return;
     ensureTtsCtx();
     answerDoneRef.current = true;
-    // Disconnect processor first (no more chunks), then stop tracks after grace period
     processorRef.current?.disconnect();
     setTimeout(() => {
       stopMic();
