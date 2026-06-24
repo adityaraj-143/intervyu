@@ -58,14 +58,42 @@ export default function InterviewPage() {
 
         socket.emit("sttConfig", { sampleRate: actualRate });
 
+        // VAD State
+        let isSpeaking = false;
+        let silenceFrames = 0;
+        const SILENCE_THRESHOLD = 0.01; // Adjust based on mic noise floor
+        const MAX_SILENCE_FRAMES = Math.floor((2.5 * actualRate) / 4096); // ~2.5 seconds of silence
+
         processor.onaudioprocess = (e) => {
           if (!mountedRef.current) return; // stop sending after unmount
           const float32 = e.inputBuffer.getChannelData(0);
+          
+          let sumSq = 0;
           const int16 = new Int16Array(float32.length);
           for (let i = 0; i < float32.length; i++) {
             const s = Math.max(-1, Math.min(1, float32[i]));
             int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+            sumSq += float32[i] * float32[i];
           }
+          
+          const rms = Math.sqrt(sumSq / float32.length);
+
+          // Energy-based VAD logic
+          if (rms > SILENCE_THRESHOLD) {
+            if (!isSpeaking) console.log("[VAD] User started speaking");
+            isSpeaking = true;
+            silenceFrames = 0; // Reset silence counter when user speaks
+          } else if (isSpeaking) {
+            silenceFrames++;
+            if (silenceFrames >= MAX_SILENCE_FRAMES) {
+              console.log("[VAD] User stopped speaking. Auto-triggering done.");
+              isSpeaking = false;
+              silenceFrames = 0;
+              done(); // Automatically submit the answer!
+              return; // Stop sending further chunks for this turn
+            }
+          }
+
           socket.emit("audioChunk", int16.buffer);
         };
 
