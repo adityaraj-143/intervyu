@@ -5,14 +5,12 @@ import { githubScraper } from "../scrapers/githubscraper";
 export async function handleInterviewStart(req: Request, res: Response): Promise<void> {
   const { githubUsername } = req.body;
 
-  //TODO: webscrape the user's profile and repos
-
   if (!githubUsername) {
-   res.status(400).json({ error: "GitHub username is required" });
+    res.status(400).json({ error: "GitHub username is required" });
   }
 
-  const resp = await axios.get(`https:/github.com/${githubUsername}`);
-  if(resp.status !== 200) {
+  const resp = await axios.get(`https://github.com/${githubUsername}`);
+  if (resp.status !== 200) {
     res.status(404).json({ error: "GitHub user not found" });
   }
 
