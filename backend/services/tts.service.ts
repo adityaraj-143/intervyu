@@ -118,26 +118,20 @@ export class TtsSession {
       text: text + " ",
       try_trigger_generation: true,
     }));
-
-    // Send flush (empty text signals end of this chunk)
-    this.ws.send(JSON.stringify({ text: "" }));
-
-    return new Promise((resolve) => {
-      this.speakResolve = resolve;
-      this.flushTimeout = setTimeout(() => {
-        console.warn("[TTS] speak timeout");
-        this.speakResolve = null;
-        this.flushTimeout = null;
-        resolve();
-      }, 10000);
-    });
   }
 
-  close(): void {
+  async close(): Promise<void> {
     if (this.flushTimeout) clearTimeout(this.flushTimeout);
-    // Send EOS (End of Stream)
+    
     if (this.ws.readyState === WebSocket.OPEN) {
+      // Send EOS (End of Stream)
       this.ws.send(JSON.stringify({ text: "" }));
+      
+      // Wait for ElevenLabs to finish generating and send isFinal
+      await new Promise<void>((resolve) => {
+        this.speakResolve = resolve;
+        setTimeout(() => resolve(), 5000); // safety timeout
+      });
     }
     this.ws.close();
   }

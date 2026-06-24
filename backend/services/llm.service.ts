@@ -69,7 +69,7 @@ export async function callLLM(conversation: Conversation, socket: Socket): Promi
   } catch (err) {
     console.error("[LLM] Error:", err);
   } finally {
-    tts.close();
+    await tts.close();
     console.log("[LLM] Done");
   }
 }
