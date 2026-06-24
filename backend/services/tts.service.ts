@@ -21,10 +21,15 @@ export class TtsSession {
     const url = `wss://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream-input?model_id=${MODEL_ID}&output_format=pcm_24000`;
     console.log("[TTS] Connecting to ElevenLabs...");
 
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(url, {
+      headers: {
+        "xi-api-key": apiKey
+      }
+    });
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        console.error("[TTS] Timeout! readyState:", ws.readyState);
         ws.close();
         reject(new Error("TTS connection timeout"));
       }, 15000);
@@ -46,9 +51,10 @@ export class TtsSession {
         resolve();
       });
 
-      ws.addEventListener("error", (ev) => {
+      ws.addEventListener("error", (ev: any) => {
         clearTimeout(timeout);
-        reject(new Error(`TTS WS error: ${ev}`));
+        console.error("[TTS] WS error event fired:", ev.message || ev.error || ev);
+        reject(new Error(`TTS WS error: ${ev.message || "Unknown error"}`));
       });
     });
 
