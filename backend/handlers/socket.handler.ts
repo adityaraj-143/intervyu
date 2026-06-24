@@ -27,6 +27,7 @@ export function registerSocketHandlers(
       .streamingRecognize({
         config: {
           encoding: "WEBM_OPUS",
+          sampleRateHertz: sampleRate,
           languageCode: "en-US",
           enableAutomaticPunctuation: true,
         },
