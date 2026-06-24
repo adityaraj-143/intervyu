@@ -10,7 +10,8 @@ export default function InterviewPage() {
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
   const answerDoneRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const vadIntervalRef = useRef<number | null>(null);
   const scheduledStopRef = useRef(0);
   // flipped to false on unmount so any in-flight getUserMedia resolves don't re-open mic
   const mountedRef = useRef(true);
@@ -25,8 +26,14 @@ export default function InterviewPage() {
   }
 
   function stopMic() {
-    processorRef.current?.disconnect();
-    processorRef.current = null;
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    mediaRecorderRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     micCtxRef.current?.close();
@@ -53,33 +60,33 @@ export default function InterviewPage() {
         console.log("[mic] AudioContext native sampleRate:", actualRate);
 
         const source = micCtx.createMediaStreamSource(stream);
-        const processor = micCtx.createScriptProcessor(4096, 1, 1);
-        processorRef.current = processor;
+        const analyser = micCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
 
-        socket.emit("sttConfig", { sampleRate: actualRate });
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
 
         // VAD State
         let isSpeaking = false;
         let silenceFrames = 0;
-        const SILENCE_THRESHOLD = 0.01; // Adjust based on mic noise floor
-        const MAX_SILENCE_FRAMES = Math.floor((2.5 * actualRate) / 4096); // ~2.5 seconds of silence
+        const SILENCE_THRESHOLD = 5; // Amplitude out of 255
+        const MAX_SILENCE_FRAMES = 25; // 25 intervals of 100ms = ~2.5 seconds
 
-        processor.onaudioprocess = (e) => {
-          if (!mountedRef.current) return; // stop sending after unmount
-          const float32 = e.inputBuffer.getChannelData(0);
-          
-          let sumSq = 0;
-          const int16 = new Int16Array(float32.length);
-          for (let i = 0; i < float32.length; i++) {
-            const s = Math.max(-1, Math.min(1, float32[i]));
-            int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-            sumSq += float32[i] * float32[i];
+        const vadInterval = window.setInterval(() => {
+          if (!mountedRef.current) {
+            clearInterval(vadInterval);
+            return;
           }
-          
-          const rms = Math.sqrt(sumSq / float32.length);
+          analyser.getByteTimeDomainData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            const amplitude = Math.abs(dataArray[i] - 128);
+            sum += amplitude;
+          }
+          const avg = sum / bufferLength;
 
-          // Energy-based VAD logic
-          if (rms > SILENCE_THRESHOLD) {
+          if (avg > SILENCE_THRESHOLD) {
             if (!isSpeaking) console.log("[VAD] User started speaking");
             isSpeaking = true;
             silenceFrames = 0; // Reset silence counter when user speaks
@@ -90,16 +97,25 @@ export default function InterviewPage() {
               isSpeaking = false;
               silenceFrames = 0;
               done(); // Automatically submit the answer!
-              return; // Stop sending further chunks for this turn
+              return;
             }
           }
+        }, 100);
+        vadIntervalRef.current = vadInterval;
 
-          socket.emit("audioChunk", int16.buffer);
+        // Use MediaRecorder for WEBM_OPUS streaming
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = async (e) => {
+          if (e.data.size > 0 && mountedRef.current) {
+            const buffer = await e.data.arrayBuffer();
+            socket.emit("audioChunk", buffer);
+          }
         };
 
-        source.connect(processor);
-        processor.connect(micCtx.destination);
-        console.log("[mic] recording started — LINEAR16 @", actualRate, "Hz");
+        mediaRecorder.start(250); // Emit a chunk every 250ms
+        console.log("[mic] recording started — WEBM_OPUS @", actualRate, "Hz");
       })
       .catch((err) => console.error("[mic] getUserMedia error:", err));
   }
@@ -178,7 +194,9 @@ export default function InterviewPage() {
     if (answerDoneRef.current) return;
     ensureTtsCtx();
     answerDoneRef.current = true;
-    processorRef.current?.disconnect();
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+    }
     setTimeout(() => {
       stopMic();
       socketRef.current?.emit("answerDone");

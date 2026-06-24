@@ -26,8 +26,7 @@ export function registerSocketHandlers(
     recognizeStream = speechClient
       .streamingRecognize({
         config: {
-          encoding: "LINEAR16",
-          sampleRateHertz: sampleRate,
+          encoding: "WEBM_OPUS",
           languageCode: "en-US",
           enableAutomaticPunctuation: true,
         },
@@ -106,6 +105,13 @@ export function registerSocketHandlers(
     if (recognizeStream) {
       recognizeStream.destroy();
       recognizeStream = null;
+    }
+
+    if (!fullMessage.trim()) {
+      console.log("Empty transcript, ignoring answerDone.");
+      isProcessing = false;
+      socket.emit("readyForAnswer");
+      return;
     }
 
     console.log("Final transcript:", fullMessage);
