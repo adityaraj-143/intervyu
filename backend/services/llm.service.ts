@@ -66,6 +66,9 @@ export async function callLLM(conversation: Conversation, socket: Socket): Promi
 
     console.log("[LLM] Full response:", fullResponse.trim());
     conversation.addMessage(fullResponse.trim(), "interviewer");
+    console.log("\n--- Current Conversation State ---");
+    console.log(JSON.stringify(conversation.messages, null, 2));
+    console.log("----------------------------------\n");
   } catch (err) {
     console.error("[LLM] Error:", err);
   } finally {
