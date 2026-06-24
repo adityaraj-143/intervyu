@@ -26,8 +26,8 @@ export function registerSocketHandlers(
     recognizeStream = speechClient
       .streamingRecognize({
         config: {
-          encoding: "WEBM_OPUS",
-          sampleRateHertz: sampleRate,
+          encoding: "LINEAR16",
+          sampleRateHertz: 16000,
           languageCode: "en-US",
           enableAutomaticPunctuation: true,
         },
@@ -82,6 +82,7 @@ export function registerSocketHandlers(
   }
 
   socket.on("audioChunk", (chunk: Buffer) => {
+    // console.log(`[STT] received chunk size: ${chunk.length}`);
     startRecognizeStream();
     if (!recognizeStream) return;
     recognizeStream.write(chunk);

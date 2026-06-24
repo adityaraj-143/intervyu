@@ -10,7 +10,7 @@ export default function InterviewPage() {
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
   const answerDoneRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
   const vadIntervalRef = useRef<number | null>(null);
   const scheduledStopRef = useRef(0);
   // flipped to false on unmount so any in-flight getUserMedia resolves don't re-open mic
@@ -30,10 +30,8 @@ export default function InterviewPage() {
       clearInterval(vadIntervalRef.current);
       vadIntervalRef.current = null;
     }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-    mediaRecorderRef.current = null;
+    processorRef.current?.disconnect();
+    processorRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     micCtxRef.current?.close();
@@ -44,9 +42,13 @@ export default function InterviewPage() {
     stopMic();
 
     navigator.mediaDevices
-      .getUserMedia({ audio: true })
+      .getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+        },
+      })
       .then((stream) => {
-        // If the user navigated away while waiting for mic permission, kill it immediately
         if (!mountedRef.current) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -54,12 +56,13 @@ export default function InterviewPage() {
 
         streamRef.current = stream;
 
-        const micCtx = new AudioContext();
+        // Force AudioContext to 16000 Hz for Google STT
+        const micCtx = new window.AudioContext({ sampleRate: 16000 });
         micCtxRef.current = micCtx;
-        const actualRate = micCtx.sampleRate;
-        console.log("[mic] AudioContext native sampleRate:", actualRate);
 
         const source = micCtx.createMediaStreamSource(stream);
+        
+        // VAD Analyser
         const analyser = micCtx.createAnalyser();
         analyser.fftSize = 512;
         source.connect(analyser);
@@ -67,11 +70,10 @@ export default function InterviewPage() {
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
-        // VAD State
         let isSpeaking = false;
         let silenceFrames = 0;
-        const SILENCE_THRESHOLD = 5; // Amplitude out of 255
-        const MAX_SILENCE_FRAMES = 25; // 25 intervals of 100ms = ~2.5 seconds
+        const SILENCE_THRESHOLD = 5;
+        const MAX_SILENCE_FRAMES = 25; // ~2.5s
 
         const vadInterval = window.setInterval(() => {
           if (!mountedRef.current) {
@@ -81,41 +83,47 @@ export default function InterviewPage() {
           analyser.getByteTimeDomainData(dataArray);
           let sum = 0;
           for (let i = 0; i < bufferLength; i++) {
-            const amplitude = Math.abs(dataArray[i] - 128);
-            sum += amplitude;
+            sum += Math.abs(dataArray[i] - 128);
           }
           const avg = sum / bufferLength;
 
           if (avg > SILENCE_THRESHOLD) {
             if (!isSpeaking) console.log("[VAD] User started speaking");
             isSpeaking = true;
-            silenceFrames = 0; // Reset silence counter when user speaks
+            silenceFrames = 0;
           } else if (isSpeaking) {
             silenceFrames++;
             if (silenceFrames >= MAX_SILENCE_FRAMES) {
               console.log("[VAD] User stopped speaking. Auto-triggering done.");
               isSpeaking = false;
               silenceFrames = 0;
-              done(); // Automatically submit the answer!
+              done();
               return;
             }
           }
         }, 100);
         vadIntervalRef.current = vadInterval;
 
-        // Use MediaRecorder for WEBM_OPUS streaming
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
-        mediaRecorderRef.current = mediaRecorder;
-
-        mediaRecorder.ondataavailable = async (e) => {
-          if (e.data.size > 0 && mountedRef.current) {
-            const buffer = await e.data.arrayBuffer();
-            socket.emit("audioChunk", buffer);
+        // Extract raw LINEAR16 PCM
+        const processor = micCtx.createScriptProcessor(4096, 1, 1);
+        processorRef.current = processor;
+        
+        processor.onaudioprocess = (e) => {
+          if (!mountedRef.current || answerDoneRef.current) return;
+          const float32 = e.inputBuffer.getChannelData(0);
+          const int16 = new Int16Array(float32.length);
+          for (let i = 0; i < float32.length; i++) {
+            const s = Math.max(-1, Math.min(1, float32[i]));
+            int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
           }
+          socket.emit("audioChunk", int16.buffer);
         };
 
-        mediaRecorder.start(250); // Emit a chunk every 250ms
-        console.log("[mic] recording started — WEBM_OPUS @", actualRate, "Hz");
+        source.connect(processor);
+        processor.connect(micCtx.destination); // Required for onaudioprocess to fire
+
+        socket.emit("sttConfig", { sampleRate: 16000 });
+        console.log("[mic] recording started — LINEAR16 @ 16000 Hz");
       })
       .catch((err) => console.error("[mic] getUserMedia error:", err));
   }
@@ -194,6 +202,7 @@ export default function InterviewPage() {
     if (answerDoneRef.current) return;
     ensureTtsCtx();
     answerDoneRef.current = true;
+    processorRef.current?.disconnect();
     if (vadIntervalRef.current) {
       clearInterval(vadIntervalRef.current);
     }
