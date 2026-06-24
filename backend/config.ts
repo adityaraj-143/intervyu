@@ -1,4 +1,1 @@
-const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./gc-auth.json";
-const PORT = process.env.PORT || 3001;
-
-export { GOOGLE_APPLICATION_CREDENTIALS, PORT };
+export const PORT = process.env.PORT || 3001;
