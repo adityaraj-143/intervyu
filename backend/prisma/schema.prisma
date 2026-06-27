@@ -14,7 +14,8 @@ model Interview {
   id             String          @id @default(uuid())
   githubUsername String
   githubMetadata Json
-  jobDescription String?
+  jdSummary      String?
+  resumeSummary  String?
   systemPrompt   String
   status         InterviewStatus @default(Inprogress)
   score          Int             @default(0)
