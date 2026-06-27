@@ -2,6 +2,8 @@ import { Socket } from "socket.io";
 import type { SpeechClient } from "@google-cloud/speech";
 import { Conversation } from "../utils/conversation";
 import { callLLM } from "../services/llm.service";
+import { db } from "../db";
+import { MessageRole } from "../generated/prisma/enums";
 
 export function registerSocketHandlers(
   socket: Socket,
@@ -9,12 +11,28 @@ export function registerSocketHandlers(
 ): void {
   const conversation = new Conversation();
 
+  let interviewId: string | null = null;
+  let systemPrompt: string | null = null;
+
   let sampleRate = 48000; // updated by sttConfig event from frontend
   let fullMessage = "";
   let utterances: string[] = [];
   let silenceTimer: ReturnType<typeof setTimeout> | null = null;
   let isProcessing = false;
   let recognizeStream: ReturnType<SpeechClient["streamingRecognize"]> | null = null;
+
+  // ── Join: load interview context from DB ──────────────────────────────────
+  socket.on("joinInterview", async ({ interviewId: id }: { interviewId: string }) => {
+    try {
+      const interview = await db.interview.findUniqueOrThrow({ where: { id } });
+      interviewId = interview.id;
+      systemPrompt = interview.systemPrompt;
+      console.log(`[socket] Joined interview ${interviewId}`);
+    } catch {
+      console.error(`[socket] Interview ${id} not found`);
+      socket.emit("error", { message: "Interview not found" });
+    }
+  });
 
   socket.on("sttConfig", ({ sampleRate: rate }: { sampleRate: number }) => {
     sampleRate = rate;
@@ -51,6 +69,37 @@ export function registerSocketHandlers(
       });
   }
 
+  async function runLLMTurn() {
+    if (!systemPrompt) {
+      console.warn("[socket] No systemPrompt — joinInterview not received yet.");
+      socket.emit("readyForAnswer");
+      return;
+    }
+
+    const userTranscript = fullMessage;
+    conversation.addMessage(userTranscript, "interviewee");
+    fullMessage = "";
+    utterances = [];
+
+    // close stale stream before LLM (no audio during TTS anyway)
+    if (recognizeStream) {
+      recognizeStream.destroy();
+      recognizeStream = null;
+    }
+
+    const llmResponse = await callLLM(conversation, socket, systemPrompt);
+
+    // Persist both sides to DB
+    if (interviewId) {
+      await db.message.createMany({
+        data: [
+          { interviewId, role: MessageRole.Interviewee, content: userTranscript },
+          { interviewId, role: MessageRole.Interviewer, content: llmResponse },
+        ],
+      });
+    }
+  }
+
   function resetSilenceTimer() {
     if (silenceTimer) clearTimeout(silenceTimer);
     silenceTimer = setTimeout(async () => {
@@ -58,17 +107,8 @@ export function registerSocketHandlers(
       isProcessing = true;
 
       console.log("Final transcript:", fullMessage);
-      conversation.addMessage(fullMessage, "interviewee");
-      fullMessage = "";
-      utterances = [];
+      await runLLMTurn();
 
-      // close stale stream before LLM (no audio during TTS anyway)
-      if (recognizeStream) {
-        recognizeStream.destroy();
-        recognizeStream = null;
-      }
-
-      await callLLM(conversation, socket);
       isProcessing = false;
       socket.emit("readyForAnswer");
     }, 3500);
@@ -82,7 +122,6 @@ export function registerSocketHandlers(
   }
 
   socket.on("audioChunk", (chunk: Buffer) => {
-    // console.log(`[STT] received chunk size: ${chunk.length}`);
     startRecognizeStream();
     if (!recognizeStream) return;
     recognizeStream.write(chunk);
@@ -117,11 +156,8 @@ export function registerSocketHandlers(
     }
 
     console.log("Final transcript:", fullMessage);
-    conversation.addMessage(fullMessage, "interviewee");
-    fullMessage = "";
-    utterances = [];
+    await runLLMTurn();
 
-    await callLLM(conversation, socket);
     isProcessing = false;
     socket.emit("readyForAnswer"); // tell frontend to start recording again
   });

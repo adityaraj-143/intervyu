@@ -1,10 +1,11 @@
 "use client";
 
 import { BACKEND_URL } from "@/config";
-import { useEffect, useRef } from "react";
+import { use, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-export default function InterviewPage() {
+export default function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: interviewId } = use(params);
   const ttsCtxRef = useRef<AudioContext | null>(null);
   const micCtxRef = useRef<AudioContext | null>(null);
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
@@ -133,6 +134,11 @@ export default function InterviewPage() {
 
     const socket = io(BACKEND_URL);
     socketRef.current = socket;
+
+    // Tell the backend which interview session this is so it can load the system prompt
+    socket.on("connect", () => {
+      socket.emit("joinInterview", { interviewId });
+    });
 
     ensureTtsCtx();
     startRecording(socket);

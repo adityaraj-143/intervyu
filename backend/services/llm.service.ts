@@ -6,10 +6,10 @@ import { TtsSession } from "./tts.service";
 const BOUNDARY_REGEX = /[.,!?;:]/;
 const FLUSH_TIMEOUT_MS = 3000;
 
-export async function callLLM(conversation: Conversation, socket: Socket): Promise<void> {
+export async function callLLM(conversation: Conversation, socket: Socket, systemPrompt: string): Promise<string> {
   console.log("[LLM] Starting Groq stream...");
   const groq = new Groq();
-  const stream = await getGroqChatStream(groq, conversation);
+  const stream = await getGroqChatStream(groq, conversation, systemPrompt);
   console.log("[LLM] Groq stream opened, connecting TTS...");
 
   const tts = await TtsSession.create(socket);
@@ -75,30 +75,16 @@ export async function callLLM(conversation: Conversation, socket: Socket): Promi
     await tts.close();
     console.log("[LLM] Done");
   }
+
+  return fullResponse.trim();
 }
 
-export async function getGroqChatStream(groq: Groq, conversation: Conversation) {
+export async function getGroqChatStream(groq: Groq, conversation: Conversation, systemPrompt: string) {
   return groq.chat.completions.create({
     messages: [
       {
         role: "system",
-        content: `
-        You are a senior software engineer conducting a technical interview. You ask sharp, relevant follow-up questions based on the candidate's answers.
-
-        If there is no conversation history yet, introduce yourself and ask the first technical question (e.g. about system design, algorithms, data structures, or a technology you choose).
-
-        Your responses will be converted to speech. Follow these rules:
-
-        - Use natural, conversational language. Speak like a real interviewer.
-        - Keep responses concise — one question or one follow-up at a time.
-        - Use proper punctuation to indicate pauses and sentence boundaries.
-        - Avoid markdown, bullet points, tables, code blocks, emojis, and special formatting.
-        - Do not repeat what the candidate already said.
-        - Ask one question at a time; do not multi-barrel.
-        - When the candidate answers, ask a deeper follow-up or pivot to a related topic.
-
-        Respond with plain text only.
-        `,
+        content: systemPrompt,
       },
       {
         role: "user",

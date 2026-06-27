@@ -19,7 +19,7 @@ export default function Home() {
 
     const resp = await axios.post(`${BACKEND_URL}/api/v1/interview`, { githubUsername })
     if (resp.status == 200) {
-      router.push('/interview/1');
+      router.push(`/interview/${resp.data.interviewId}`);
     }
   }
 
