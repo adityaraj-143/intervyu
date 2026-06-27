@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+model Interview {
+  id             String          @id @default(uuid())
+  githubUsername String
+  githubMetadata Json
+  jdSummary      String?
+  resumeSummary  String?
+  systemPrompt   String
+  status         InterviewStatus @default(Inprogress)
+  score          Int             @default(0)
+  messages       Message[]
+  createdAt      DateTime        @default(now())
+}
+
+model Message {
+  id          String      @id @default(uuid())
+  interviewId String
+  interview   Interview   @relation(fields: [interviewId], references: [id])
+  role        MessageRole
+  content     String
+  createdAt   DateTime    @default(now())
+}
+
+enum MessageRole {
+  Interviewee
+  Interviewer
+}
+
+enum InterviewStatus {
+  Pending
+  Inprogress
+  Completed
+}

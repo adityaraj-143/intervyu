@@ -1,7 +1,7 @@
 import type { Socket } from "socket.io";
-import WebSocket from "ws";
 
-const DEEPGRAM_MODEL = "aura-2-thalia-en";
+const VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // George
+const MODEL_ID = "eleven_flash_v2_5";     // low-latency model
 
 export class TtsSession {
   private socket: Socket;
@@ -15,76 +15,92 @@ export class TtsSession {
   }
 
   static async create(socket: Socket): Promise<TtsSession> {
-    const apiKey = process.env.DEEPGRAM_KEY;
-    if (!apiKey) throw new Error("DEEPGRAM_KEY not set");
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) throw new Error("ELEVENLABS_API_KEY not set");
 
-    const url = `wss://api.deepgram.com/v1/speak?model=${DEEPGRAM_MODEL}&encoding=linear16&sample_rate=24000`;
-    console.log("[TTS] Connecting...");
+    const url = `wss://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream-input?model_id=${MODEL_ID}&output_format=pcm_24000`;
+    console.log("[TTS] Connecting to ElevenLabs...");
 
     const ws = new WebSocket(url, {
-      headers: { Authorization: `Token ${apiKey}` },
+      headers: {
+        "xi-api-key": apiKey
+      }
     });
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        console.error("[TTS] Timeout! readyState:", ws.readyState);
         ws.close();
         reject(new Error("TTS connection timeout"));
       }, 15000);
 
-      ws.on("open", () => {
+      ws.addEventListener("open", () => {
         clearTimeout(timeout);
         console.log("[TTS] Connected");
+
+        // Send initial config (BOS — Beginning of Stream)
+        ws.send(JSON.stringify({
+          text: " ",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+          },
+          xi_api_key: apiKey,
+        }));
+
         resolve();
       });
 
-      ws.on("error", (err) => {
+      ws.addEventListener("error", (ev: any) => {
         clearTimeout(timeout);
-        reject(err);
+        console.error("[TTS] WS error event fired:", ev.message || ev.error || ev);
+        reject(new Error(`TTS WS error: ${ev.message || "Unknown error"}`));
       });
     });
 
     const session = new TtsSession(socket, ws);
 
-    ws.on("message", (data: any, isBinary) => {
-      if (isBinary) {
-        const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
-        console.log("[TTS] emitting ttsAudio (binary), bytes:", buf.length);
-        socket.emit("ttsAudio", new Uint8Array(buf));
-      } else {
-        try {
-          const parsed = JSON.parse(data.toString());
-          if (parsed?.type === "Flushed") {
-            console.log("[TTS] Flushed");
-            if (session.flushTimeout) {
-              clearTimeout(session.flushTimeout);
-              session.flushTimeout = null;
-            }
-            if (session.speakResolve) {
-              session.speakResolve();
-              session.speakResolve = null;
-            }
-          } else if (parsed?.type === "Metadata") {
-            console.log("[TTS] Metadata:", parsed.request_id);
-          } else if (parsed?.type === "Warning") {
-            console.warn("[TTS] Warning:", parsed.description);
-          }
-        } catch {
-          // Not JSON - might be base64 audio string
-          const text = data.toString();
-          if (text) {
-            try {
-              const audioBuffer = Buffer.from(text, "base64");
-              console.log("[TTS] emitting ttsAudio (base64), bytes:", audioBuffer.length);
-              socket.emit("ttsAudio", new Uint8Array(audioBuffer));
-            } catch {
-              console.warn("[TTS] unparseable message:", text.slice(0, 50));
-            }
+    ws.addEventListener("message", (event) => {
+      try {
+        const data = JSON.parse(typeof event.data === "string" ? event.data : "");
+
+        if (data.audio) {
+          // ElevenLabs sends base64-encoded PCM chunks
+          const buf = Buffer.from(data.audio, "base64");
+          if (buf.length > 0) {
+            console.log("[TTS] emitting ttsAudio, bytes:", buf.length);
+            socket.emit("ttsAudio", new Uint8Array(buf));
           }
         }
+
+        if (data.isFinal) {
+          console.log("[TTS] Generation complete (isFinal)");
+          if (session.flushTimeout) {
+            clearTimeout(session.flushTimeout);
+            session.flushTimeout = null;
+          }
+          if (session.speakResolve) {
+            session.speakResolve();
+            session.speakResolve = null;
+          }
+        }
+      } catch {
+        // Non-JSON message, ignore
       }
     });
 
-    ws.on("error", (err) => console.error("[TTS] WS error:", err.message));
+    ws.addEventListener("error", (ev) => {
+      console.error("[TTS] WS error:", ev);
+    });
+
+    ws.addEventListener("close", () => {
+      console.log("[TTS] WS closed");
+      // Resolve any pending speak promise so LLM loop doesn't hang
+      if (session.speakResolve) {
+        session.speakResolve();
+        session.speakResolve = null;
+      }
+    });
 
     return session;
   }
@@ -97,22 +113,26 @@ export class TtsSession {
       return;
     }
 
-    this.ws.send(JSON.stringify({ type: "Speak", text }));
-    this.ws.send(JSON.stringify({ type: "Flush" }));
-
-    return new Promise((resolve) => {
-      this.speakResolve = resolve;
-      this.flushTimeout = setTimeout(() => {
-        console.warn("[TTS] speak timeout");
-        this.speakResolve = null;
-        this.flushTimeout = null;
-        resolve();
-      }, 10000);
-    });
+    // Send text chunk
+    this.ws.send(JSON.stringify({
+      text: text + " ",
+      try_trigger_generation: true,
+    }));
   }
 
-  close(): void {
+  async close(): Promise<void> {
     if (this.flushTimeout) clearTimeout(this.flushTimeout);
+    
+    if (this.ws.readyState === WebSocket.OPEN) {
+      // Send EOS (End of Stream)
+      this.ws.send(JSON.stringify({ text: "" }));
+      
+      // Wait for ElevenLabs to finish generating and send isFinal
+      await new Promise<void>((resolve) => {
+        this.speakResolve = resolve;
+        setTimeout(() => resolve(), 5000); // safety timeout
+      });
+    }
     this.ws.close();
   }
 }
