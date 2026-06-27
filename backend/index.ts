@@ -38,7 +38,10 @@ io.on("connection", (socket) => {
 
 app.post(
   "/api/v1/interview",
-  upload.single("jobDescriptionPdf"),
+  upload.fields([
+    { name: "jobDescriptionPdf", maxCount: 1 },
+    { name: "resumePdf", maxCount: 1 }
+  ]),
   handleInterviewStart
 );
 

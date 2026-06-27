@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import { githubScraper } from "../scrapers/githubscraper";
 import { db } from "../db";
 import { PDFParse } from "pdf-parse";
+import { summarizeJD, summarizeResume } from "../services/summarize.service";
+import { buildSystemPrompt } from "../utils/buildSystemPrompt";
 
 export async function handleInterviewStart(req: Request, res: Response): Promise<void> {
   const { githubUsername, jobDescriptionText } = req.body;
@@ -11,31 +13,46 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
     return;
   }
 
-  // ── Extract job description ─────────────────────────────────────────────
-  let jobDescription: string | null = null;
+  // ── Extract raw files ───────────────────────────────────────────────────
+  const files = (req as any).files as { [fieldname: string]: any[] } | undefined;
+  const jdPdfFile = files?.["jobDescriptionPdf"]?.[0];
+  const resumePdfFile = files?.["resumePdf"]?.[0];
 
-  const pdfFile = (req as any).file; // set by multer when a PDF is uploaded
-  if (pdfFile) {
-    try {
-      const parser = new PDFParse({ data: pdfFile.buffer });
-      const result = await parser.getText();
-      jobDescription = result.text.trim();
-    } catch {
-      res.status(400).json({ error: "Failed to parse PDF. Please try pasting the JD as text." });
-      return;
+  let rawJdText: string | null = null;
+  let rawResumeText: string | null = null;
+
+  try {
+    if (jdPdfFile) {
+      const parser = new PDFParse({ data: jdPdfFile.buffer });
+      rawJdText = (await parser.getText()).text.trim();
+    } else if (jobDescriptionText?.trim()) {
+      rawJdText = jobDescriptionText.trim();
     }
-  } else if (jobDescriptionText?.trim()) {
-    jobDescription = jobDescriptionText.trim();
+
+    if (resumePdfFile) {
+      const parser = new PDFParse({ data: resumePdfFile.buffer });
+      rawResumeText = (await parser.getText()).text.trim();
+    }
+  } catch {
+    res.status(400).json({ error: "Failed to parse one or more PDF files." });
+    return;
   }
 
-  // ── Scrape GitHub ───────────────────────────────────────────────────────
-  let repos: Awaited<ReturnType<typeof githubScraper>>;
-  try {
-    repos = await githubScraper(githubUsername);
-  } catch {
+  // ── Run external calls in parallel ───────────────────────────────────────
+  const [reposResult, jdSummaryResult, resumeSummaryResult] = await Promise.allSettled([
+    githubScraper(githubUsername),
+    rawJdText ? summarizeJD(rawJdText) : Promise.resolve(null),
+    rawResumeText ? summarizeResume(rawResumeText) : Promise.resolve(null)
+  ]);
+
+  if (reposResult.status === "rejected") {
     res.status(404).json({ error: "GitHub user not found or API error" });
     return;
   }
+
+  const repos = reposResult.value;
+  const jdSummary = jdSummaryResult.status === "fulfilled" ? jdSummaryResult.value : null;
+  const resumeSummary = resumeSummaryResult.status === "fulfilled" ? resumeSummaryResult.value : null;
 
   const repoSummary = repos
     .slice(0, 15)
@@ -45,33 +62,14 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
     .join("\n");
 
   // ── Build system prompt ─────────────────────────────────────────────────
-  const jdSection = jobDescription
-    ? `\nYou are interviewing on behalf of the company described in this job description. Represent that company and evaluate the candidate for this specific role:\n\n${jobDescription}\n`
-    : `\nConduct a general senior software engineering interview.\n`;
-
-  const systemPrompt = `You are a senior software engineer conducting a technical interview.
-${jdSection}
-The candidate's GitHub username is "${githubUsername}". Their public repositories are:
-${repoSummary}
-
-Use this context to tailor your questions — ask about specific projects, technologies, and patterns you see in their work. If a job description was provided, align your questions with the required skills and the company's tech focus. Start with a brief introduction and a targeted opening question.
-
-Your responses will be converted to speech. Follow these rules:
-- Use natural, conversational language. Speak like a real interviewer.
-- Keep responses concise — one question or one follow-up at a time.
-- Use proper punctuation to indicate pauses and sentence boundaries.
-- Avoid markdown, bullet points, tables, code blocks, emojis, and special formatting.
-- Do not repeat what the candidate already said.
-- Ask one question at a time; do not multi-barrel.
-- When the candidate answers, ask a deeper follow-up or pivot to a related topic.
-
-Respond with plain text only.`;
+  const systemPrompt = buildSystemPrompt({ repoSummary, jdSummary, resumeSummary });
 
   const interview = await db.interview.create({
     data: {
       githubUsername,
       githubMetadata: repos as object[],
-      jobDescription,
+      jdSummary,
+      resumeSummary,
       systemPrompt,
     },
   });
