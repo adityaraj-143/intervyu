@@ -81,6 +81,23 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Design system tokens */
+  --iv-accent: 230 100% 66%;
+  --iv-accent-rgb: 82, 102, 255;
+  --iv-surface-0: #000000;
+  --iv-surface-1: #0a0a0f;
+  --iv-surface-2: #12121a;
+  --iv-surface-3: #1a1a25;
+  --iv-surface-4: #22222f;
+  --iv-text-primary: #f0f0f5;
+  --iv-text-secondary: #8888a0;
+  --iv-text-tertiary: #55556a;
+  --iv-border-subtle: rgba(255, 255, 255, 0.06);
+  --iv-border-medium: rgba(255, 255, 255, 0.1);
+  --iv-glass-bg: rgba(255, 255, 255, 0.03);
+  --iv-glass-border: rgba(255, 255, 255, 0.08);
+  --iv-glass-highlight: rgba(255, 255, 255, 0.05);
 }
 
 .dark {
@@ -126,5 +143,344 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
+}
+
+/* ── Intervyu Design System ──────────────────────────────────────── */
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ── Keyframe Animations ─────────────────────────────────────────── */
+
+@keyframes iv-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes iv-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes iv-glow-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes iv-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes iv-gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes iv-draw-line {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes iv-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes iv-spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes iv-bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes iv-ring-fill {
+  from {
+    stroke-dashoffset: var(--iv-ring-circumference);
+  }
+  to {
+    stroke-dashoffset: var(--iv-ring-target);
+  }
+}
+
+@keyframes iv-border-glow {
+  0%, 100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes iv-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes iv-pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* ── Utility Classes ─────────────────────────────────────────────── */
+
+.iv-glass {
+  background: var(--iv-glass-bg);
+  border: 1px solid var(--iv-glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.iv-glass-hover:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.iv-gradient-text {
+  background: linear-gradient(
+    135deg,
+    var(--iv-text-primary) 0%,
+    hsl(var(--iv-accent)) 50%,
+    var(--iv-text-primary) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: iv-gradient-shift 6s ease infinite;
+}
+
+.iv-accent-glow {
+  box-shadow: 0 0 20px rgba(var(--iv-accent-rgb), 0.15),
+              0 0 40px rgba(var(--iv-accent-rgb), 0.05);
+}
+
+.iv-accent-glow-strong {
+  box-shadow: 0 0 20px rgba(var(--iv-accent-rgb), 0.25),
+              0 0 60px rgba(var(--iv-accent-rgb), 0.1);
+}
+
+.iv-animated-border {
+  position: relative;
+}
+
+.iv-animated-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(var(--iv-accent-rgb), 0.3) 50%,
+    transparent 100%
+  );
+  mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.iv-animated-border:hover::before {
+  opacity: 1;
+}
+
+/* Marquee */
+.iv-marquee-track {
+  animation: iv-marquee 30s linear infinite;
+}
+.iv-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Section spacing */
+.iv-section {
+  padding: 120px 0;
+  position: relative;
+}
+
+.iv-section-sm {
+  padding: 80px 0;
+}
+
+/* Container */
+.iv-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (min-width: 768px) {
+  .iv-container {
+    padding: 0 40px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .iv-container {
+    padding: 0 64px;
+  }
+}
+
+/* ── Typography ──────────────────────────────────────────────────── */
+
+.iv-heading-lg {
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--iv-text-primary);
+}
+
+.iv-heading-md {
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--iv-text-primary);
+}
+
+.iv-heading-sm {
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--iv-text-primary);
+}
+
+.iv-body {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--iv-text-secondary);
+}
+
+.iv-body-sm {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--iv-text-secondary);
+}
+
+.iv-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--iv-accent));
+}
+
+/* ── Card Styles ─────────────────────────────────────────────────── */
+
+.iv-card {
+  background: var(--iv-surface-2);
+  border: 1px solid var(--iv-border-subtle);
+  border-radius: 16px;
+  padding: 32px;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.iv-card:hover {
+  border-color: var(--iv-border-medium);
+  transform: translateY(-2px);
+}
+
+.iv-card-glass {
+  background: var(--iv-glass-bg);
+  border: 1px solid var(--iv-glass-border);
+  border-radius: 16px;
+  padding: 32px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.iv-card-glass:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Divider ─────────────────────────────────────────────────────── */
+
+.iv-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--iv-border-subtle) 20%,
+    var(--iv-border-medium) 50%,
+    var(--iv-border-subtle) 80%,
+    transparent 100%
+  );
 }
