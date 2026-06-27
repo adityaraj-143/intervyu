@@ -13,8 +13,12 @@ export default function Home() {
   const [jdMode, setJdMode] = useState<JdMode>("text");
   const [jdText, setJdText] = useState<string>("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const jdFileInputRef = useRef<HTMLInputElement>(null);
+  const resumeFileInputRef = useRef<HTMLInputElement>(null);
+  
   const router = useRouter();
 
   const handleClick = async () => {
@@ -37,6 +41,10 @@ export default function Home() {
         formData.append("jobDescriptionText", jdText.trim());
       } else if (jdMode === "pdf" && pdfFile) {
         formData.append("jobDescriptionPdf", pdfFile);
+      }
+
+      if (resumeFile) {
+        formData.append("resumePdf", resumeFile);
       }
 
       const resp = await axios.post(`${BACKEND_URL}/api/v1/interview`, formData, {
@@ -95,15 +103,15 @@ export default function Home() {
         ) : (
           <div
             className="border-2 border-dashed rounded px-3 py-6 text-center text-sm text-zinc-400 cursor-pointer hover:border-zinc-500 transition-colors"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => jdFileInputRef.current?.click()}
           >
             {pdfFile ? (
               <span className="text-zinc-700 dark:text-zinc-300">📄 {pdfFile.name}</span>
             ) : (
-              "Click to upload PDF"
+              "Click to upload JD PDF"
             )}
             <input
-              ref={fileInputRef}
+              ref={jdFileInputRef}
               type="file"
               accept=".pdf"
               className="hidden"
@@ -113,10 +121,32 @@ export default function Home() {
         )}
       </div>
 
+      {/* Resume section */}
+      <div className="flex flex-col w-80 gap-2">
+        <p className="text-sm text-zinc-500">Resume (optional)</p>
+        <div
+          className="border-2 border-dashed rounded px-3 py-6 text-center text-sm text-zinc-400 cursor-pointer hover:border-zinc-500 transition-colors"
+          onClick={() => resumeFileInputRef.current?.click()}
+        >
+          {resumeFile ? (
+            <span className="text-zinc-700 dark:text-zinc-300">📄 {resumeFile.name}</span>
+          ) : (
+            "Click to upload Resume PDF"
+          )}
+          <input
+            ref={resumeFileInputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+          />
+        </div>
+      </div>
+
       <button
         onClick={handleClick}
         disabled={loading}
-        className="px-6 py-2 bg-black text-white dark:bg-white dark:text-black rounded font-medium disabled:opacity-50"
+        className="px-6 py-2 bg-black text-white dark:bg-white dark:text-black rounded font-medium disabled:opacity-50 mt-2"
       >
         {loading ? "Starting..." : "Start Interview"}
       </button>
