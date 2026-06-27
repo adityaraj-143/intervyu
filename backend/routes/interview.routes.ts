@@ -18,6 +18,11 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
   const jdPdfFile = files?.["jobDescriptionPdf"]?.[0];
   const resumePdfFile = files?.["resumePdf"]?.[0];
 
+  if (!resumePdfFile) {
+    res.status(400).json({ error: "Resume PDF is required" });
+    return;
+  }
+
   let rawJdText: string | null = null;
   let rawResumeText: string | null = null;
 

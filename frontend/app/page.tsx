@@ -32,6 +32,11 @@ export default function Home() {
       return;
     }
 
+    if (!resumeFile) {
+      toast.error("Please upload a resume");
+      return;
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
@@ -123,7 +128,7 @@ export default function Home() {
 
       {/* Resume section */}
       <div className="flex flex-col w-80 gap-2">
-        <p className="text-sm text-zinc-500">Resume (optional)</p>
+        <p className="text-sm text-zinc-500">Resume (required)</p>
         <div
           className="border-2 border-dashed rounded px-3 py-6 text-center text-sm text-zinc-400 cursor-pointer hover:border-zinc-500 transition-colors"
           onClick={() => resumeFileInputRef.current?.click()}
