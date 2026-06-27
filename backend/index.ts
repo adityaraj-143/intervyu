@@ -2,6 +2,7 @@
 import express from "express";
 import http from "http";
 import cors from "cors";
+import multer from "multer";
 import { Server } from "socket.io";
 import { PORT } from "./config";
 import { createSpeechClient } from "./services/speech.service";
@@ -20,12 +21,26 @@ app.use(express.json());
 
 const speechClient = createSpeechClient();
 
+// multer: memory storage, accept a single optional PDF named "jobDescriptionPdf"
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "application/pdf") cb(null, true);
+    else cb(new Error("Only PDF files are accepted"));
+  },
+});
+
 io.on("connection", (socket) => {
   console.log("Client connected");
   registerSocketHandlers(socket, speechClient);
 });
 
-app.post("/api/v1/interview", handleInterviewStart);
+app.post(
+  "/api/v1/interview",
+  upload.single("jobDescriptionPdf"),
+  handleInterviewStart
+);
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
