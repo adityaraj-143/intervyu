@@ -15,7 +15,5 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
   }
 
   const userData = githubScraper(githubUsername);
-
-
-  res.status(200).json({ message: "Interview started", interviewId: 1 });
+  res.status(200).json({ message: "Interview started", userData });
 }
