@@ -12,11 +12,12 @@ datasource db {
 
 model Interview {
   id             String          @id @default(uuid())
-  githubUsername String
-  githubMetadata Json
+  githubUsername  String?
+  githubMetadata Json?
   jdSummary      String?
   resumeSummary  String?
   systemPrompt   String
+  interviewType  InterviewType   @default(Technical)
   status         InterviewStatus @default(Inprogress)
   score          Int             @default(0)
   messages       Message[]
@@ -35,6 +36,11 @@ model Message {
 enum MessageRole {
   Interviewee
   Interviewer
+}
+
+enum InterviewType {
+  Technical
+  HR
 }
 
 enum InterviewStatus {
