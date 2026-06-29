@@ -1,21 +1,57 @@
 "use client";
 
 import { BACKEND_URL } from "@/config";
-import { use, useEffect, useRef } from "react";
+import { use, useEffect, useRef, useState, useCallback } from "react";
 import { io } from "socket.io-client";
+import { motion } from "framer-motion";
+import AIVideoBox from "@/components/interview/AIVideoBox";
+import UserVideoBox from "@/components/interview/UserVideoBox";
+import MediaControls from "@/components/interview/MediaControls";
 
 export default function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: interviewId } = use(params);
+
+  // Refs for audio/socket infrastructure
   const ttsCtxRef = useRef<AudioContext | null>(null);
   const micCtxRef = useRef<AudioContext | null>(null);
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
   const answerDoneRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const vadIntervalRef = useRef<number | null>(null);
   const scheduledStopRef = useRef(0);
-  // flipped to false on unmount so any in-flight getUserMedia resolves don't re-open mic
   const mountedRef = useRef(true);
+  const isMutedRef = useRef(false);
+
+  // UI State
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+  const [isTTSPlaying, setIsTTSPlaying] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  // Keep mute ref in sync for use in callbacks
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  // Timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  // ── Audio helpers ──────────────────────────────────────────────────
 
   function ensureTtsCtx() {
     if (!ttsCtxRef.current || ttsCtxRef.current.state === "closed") {
@@ -33,11 +69,24 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
     }
     processorRef.current?.disconnect();
     processorRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
     micCtxRef.current?.close();
     micCtxRef.current = null;
   }
+
+  const done = useCallback(() => {
+    if (answerDoneRef.current) return;
+    ensureTtsCtx();
+    answerDoneRef.current = true;
+    setIsThinking(true);
+    processorRef.current?.disconnect();
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+    }
+    setTimeout(() => {
+      stopMic();
+      socketRef.current?.emit("answerDone");
+    }, 300);
+  }, []);
 
   function startRecording(socket: ReturnType<typeof io>) {
     stopMic();
@@ -49,20 +98,20 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
           channelCount: 1,
         },
       })
-      .then((stream) => {
+      .then((audioStream) => {
         if (!mountedRef.current) {
-          stream.getTracks().forEach((t) => t.stop());
+          audioStream.getTracks().forEach((t) => t.stop());
           return;
         }
 
-        streamRef.current = stream;
+        // Store the audio stream ref for cleanup
+        audioStreamRef.current = audioStream;
 
-        // Force AudioContext to 16000 Hz for Google STT
         const micCtx = new window.AudioContext({ sampleRate: 16000 });
         micCtxRef.current = micCtx;
 
-        const source = micCtx.createMediaStreamSource(stream);
-        
+        const source = micCtx.createMediaStreamSource(audioStream);
+
         // VAD Analyser
         const analyser = micCtx.createAnalyser();
         analyser.fftSize = 512;
@@ -81,6 +130,8 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
             clearInterval(vadInterval);
             return;
           }
+          if (isMutedRef.current) return;
+
           analyser.getByteTimeDomainData(dataArray);
           let sum = 0;
           for (let i = 0; i < bufferLength; i++) {
@@ -105,12 +156,13 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
         }, 100);
         vadIntervalRef.current = vadInterval;
 
-        // Extract raw LINEAR16 PCM
         const processor = micCtx.createScriptProcessor(4096, 1, 1);
         processorRef.current = processor;
-        
+
         processor.onaudioprocess = (e) => {
           if (!mountedRef.current || answerDoneRef.current) return;
+          if (isMutedRef.current) return;
+
           const float32 = e.inputBuffer.getChannelData(0);
           const int16 = new Int16Array(float32.length);
           for (let i = 0; i < float32.length; i++) {
@@ -129,13 +181,30 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
       .catch((err) => console.error("[mic] getUserMedia error:", err));
   }
 
+  // ── Initialize video + socket ──────────────────────────────────────
+
   useEffect(() => {
     mountedRef.current = true;
+
+    // Get video stream (separate from audio — video stays alive the whole session)
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then((videoStream) => {
+        if (!mountedRef.current) {
+          videoStream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = videoStream;
+        setMediaStream(videoStream);
+      })
+      .catch((err) => {
+        console.warn("[video] getUserMedia error:", err);
+        // Continue without video — interview still works
+      });
 
     const socket = io(BACKEND_URL);
     socketRef.current = socket;
 
-    // Tell the backend which interview session this is so it can load the system prompt
     socket.on("connect", () => {
       socket.emit("joinInterview", { interviewId });
     });
@@ -143,7 +212,11 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
     ensureTtsCtx();
     startRecording(socket);
 
+    let activeSources = 0;
+
     socket.on("ttsAudio", (data: unknown) => {
+      setIsThinking(false);
+
       const ctx = ttsCtxRef.current;
       if (!ctx || ctx.state === "closed") return;
 
@@ -177,67 +250,132 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
       source.start(when);
+
+      activeSources++;
+      setIsTTSPlaying(true);
+
+      source.onended = () => {
+        activeSources--;
+        if (activeSources <= 0) {
+          activeSources = 0;
+          setIsTTSPlaying(false);
+        }
+      };
     });
 
     socket.on("readyForAnswer", () => {
       console.log("[interview] ready for next answer, restarting mic");
       answerDoneRef.current = false;
+      setIsThinking(false);
+      setIsTTSPlaying(false);
       startRecording(socket);
     });
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !answerDoneRef.current) {
-        e.preventDefault();
-        done();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
     return () => {
-      mountedRef.current = false; // prevent any pending getUserMedia from re-opening mic
-      window.removeEventListener("keydown", handleKeyDown);
-      stopMic(); // stops all tracks → clears browser mic indicator
+      mountedRef.current = false;
+      stopMic();
+      // Stop audio stream
+      audioStreamRef.current?.getTracks().forEach((t) => t.stop());
+      audioStreamRef.current = null;
+      // Stop video stream
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
       socket.disconnect();
       ttsCtxRef.current?.close();
       ttsCtxRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function done() {
-    if (answerDoneRef.current) return;
-    ensureTtsCtx();
-    answerDoneRef.current = true;
-    processorRef.current?.disconnect();
-    if (vadIntervalRef.current) {
-      clearInterval(vadIntervalRef.current);
-    }
-    setTimeout(() => {
-      stopMic();
-      socketRef.current?.emit("answerDone");
-    }, 300);
-  }
+  // ── Camera toggle ──────────────────────────────────────────────────
+
+  const handleToggleCamera = useCallback(() => {
+    setIsCameraOff((prev) => {
+      const next = !prev;
+      const videoTrack = streamRef.current?.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !next;
+      }
+      return next;
+    });
+  }, []);
+
+  // ── Mute toggle ────────────────────────────────────────────────────
+
+  const handleToggleMute = useCallback(() => {
+    setIsMuted((prev) => !prev);
+  }, []);
+
+  // ── End interview ──────────────────────────────────────────────────
+
+  const handleEndInterview = useCallback(() => {
+    mountedRef.current = false;
+    stopMic();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    socketRef.current?.disconnect();
+    ttsCtxRef.current?.close();
+    ttsCtxRef.current = null;
+    window.location.href = "/";
+  }, []);
+
+  // ── Render ─────────────────────────────────────────────────────────
 
   return (
-    <div
-      style={{
-        padding: "1rem",
-        fontFamily: "monospace",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        gap: "1rem",
-      }}
-    >
-      <button
-        onClick={done}
-        style={{ padding: "1rem 2rem", fontSize: "1.2rem", cursor: "pointer" }}
+    <div className="fixed inset-0 flex flex-col overflow-hidden font-sans" style={{ background: "var(--iv-surface-1)" }}>
+      {/* Header */}
+      <motion.div
+        className="flex items-center justify-between px-6 py-4 z-10"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
       >
-        Answer Done
-      </button>
-      <p style={{ color: "#666" }}>Press Space or click button when done answering</p>
+        <div className="flex items-center gap-2.5">
+          <span
+            className="w-2 h-2 rounded-full animate-[iv-glow-pulse_2s_ease-in-out_infinite]"
+            style={{
+              background: "hsl(var(--iv-accent))",
+              boxShadow: "0 0 12px rgba(var(--iv-accent-rgb), 0.5)",
+            }}
+          />
+          <span className="text-sm font-medium tracking-wide" style={{ color: "var(--iv-text-secondary)" }}>
+            intervyu
+          </span>
+        </div>
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] border border-white/6 bg-white/4">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-[iv-glow-pulse_1.5s_ease-in-out_infinite]" />
+          <span
+            className="text-[0.8125rem] font-medium tracking-wider tabular-nums"
+            style={{ color: "var(--iv-text-secondary)" }}
+          >
+            {formatTime(elapsed)}
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Video Grid */}
+      <motion.div
+        className="flex-1 flex gap-4 px-6 pb-4 min-h-0 max-md:flex-col max-md:px-3 max-md:pb-3 max-md:gap-3"
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}
+      >
+        <AIVideoBox isSpeaking={isTTSPlaying} isThinking={isThinking} />
+        <UserVideoBox
+          stream={mediaStream}
+          isCameraOff={isCameraOff}
+          isMuted={isMuted}
+        />
+      </motion.div>
+
+      {/* Controls */}
+      <MediaControls
+        isMuted={isMuted}
+        isCameraOff={isCameraOff}
+        onToggleMute={handleToggleMute}
+        onToggleCamera={handleToggleCamera}
+        onEndInterview={handleEndInterview}
+      />
     </div>
   );
 }
