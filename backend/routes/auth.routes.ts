@@ -1,7 +1,16 @@
 import express from "express";
+import { OAuth2Client } from "google-auth-library";
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 import { db } from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import {
+  createAccessToken,
+  createAuthTokens,
+  getAccessTokenCookieOptions,
+  getRefreshTokenCookieOptions,
+} from "./auth.tokens";
 
 const router = express.Router();
 
@@ -18,40 +27,27 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ error: "email already exists" });
   }
 
-  const paswordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(password, 10);
 
   const createdUser = await db.user.create({
     data: {
       email,
-      passwordHash: paswordHash,
+      passwordHash,
       name,
     },
   });
 
-  const accessToken = jwt.sign(
-    { userId: createdUser.id, email: createdUser.email },
-    process.env.SECRET_KEY!,
-    { expiresIn: "15m" },
-  );
-
-  const refreshToken = jwt.sign(
-    { userId: createdUser.id, email: createdUser.email },
-    process.env.REFRESH_SECRET!,
-    { expiresIn: "7d" },
-  );
+  const { accessToken, refreshToken } = createAuthTokens({
+    userId: createdUser.id,
+    email: createdUser.email,
+  });
 
   res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 15 * 60 * 1000,
+    ...getAccessTokenCookieOptions(),
   });
 
   res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    ...getRefreshTokenCookieOptions(),
   });
 
   res.send("Signup successful");
@@ -75,19 +71,18 @@ router.post("/login", async (req, res) => {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
-  const token = jwt.sign(
-    { userId: user.id, email: user.email },
-    process.env.SECRET_KEY!,
-    { expiresIn: "15m" },
-  );
-
-  res.cookie("jwt", token, {
-    httpOnly: true,
-    // secure: true, // Use in production
-    sameSite: "strict",
-    maxAge: 15 * 60 * 1000,
+  const { accessToken, refreshToken } = createAuthTokens({
+    userId: user.id,
+    email: user.email,
   });
 
+  res.cookie("accessToken", accessToken, {
+    ...getAccessTokenCookieOptions(),
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    ...getRefreshTokenCookieOptions(),
+  });
   res.send("Login successful");
 });
 
@@ -102,17 +97,10 @@ router.post("/refresh", (req, res) => {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET!);
     const { userId, email } = decoded as { userId: string; email: string };
 
-    const newAccessToken = jwt.sign(
-      { userId, email },
-      process.env.SECRET_KEY!,
-      { expiresIn: "15m" },
-    );
+    const newAccessToken = createAccessToken({ userId, email });
 
     res.cookie("accessToken", newAccessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000,
+      ...getAccessTokenCookieOptions(),
     });
 
     res.send("Access token refreshed");
@@ -121,10 +109,60 @@ router.post("/refresh", (req, res) => {
   }
 });
 
-router.post("/google", (req, res) => {
-  // Logic to verify Google ID token goes here
-  res.send("Google Auth successful");
+router.post("/google", async (req, res) => {
+  const { idToken } = req.body;
+
+  if (!idToken) {
+    return res.status(400).json({ error: "idToken is required" });
+  }
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(401).json({ error: "Invalid Google token" });
+    }
+
+    const { email, name } = payload;
+    if (!email) {
+      return res.status(400).json({ error: "Email not found in token payload" });
+    }
+
+    let user = await db.user.findUnique({ where: { email } });
+
+    if (!user) {
+      user = await db.user.create({
+        data: {
+          email,
+          name: name || "Google User",
+          passwordHash: "", // Dummy hash for Google users
+          authProvider: "GOOGLE",
+        },
+      });
+    }
+
+    const { accessToken, refreshToken } = createAuthTokens({
+      userId: user.id,
+      email: user.email,
+    });
+
+    res.cookie("accessToken", accessToken, {
+      ...getAccessTokenCookieOptions(),
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      ...getRefreshTokenCookieOptions(),
+    });
+
+    res.send("Google Auth successful");
+  } catch (error) {
+    console.error("Google Auth error:", error);
+    res.status(401).json({ error: "Google authentication failed" });
+  }
 });
 
-// 3. Export the router so index.ts can use it
 export default router;
