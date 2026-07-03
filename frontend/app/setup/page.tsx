@@ -11,8 +11,10 @@ import VoiceSelector from "@/components/setup/VoiceSelector";
 import MagneticButton from "@/components/landing/MagneticButton";
 
 type JdMode = "text" | "pdf";
+type InterviewType = "technical" | "hr";
 
 export default function SetupPage() {
+  const [interviewType, setInterviewType] = useState<InterviewType>("technical");
   const [githubUsername, setGithubUsername] = useState<string>("");
   const [jdMode, setJdMode] = useState<JdMode>("text");
   const [jdText, setJdText] = useState<string>("");
@@ -25,14 +27,25 @@ export default function SetupPage() {
 
   const router = useRouter();
 
+  const isTechnical = interviewType === "technical";
+
+  const hasJD =
+    (jdMode === "text" && jdText.trim().length > 0) ||
+    (jdMode === "pdf" && pdfFile !== null);
+
   const handleClick = async () => {
-    if (!githubUsername.trim()) {
+    if (isTechnical && !githubUsername.trim()) {
       toast.error("Please enter a GitHub username");
       return;
     }
 
-    if (jdMode === "pdf" && !pdfFile) {
-      toast.error("Please upload a PDF or switch to text mode");
+    if (jdMode === "pdf" && !pdfFile && (isTechnical ? false : true)) {
+      toast.error("Please upload a JD PDF or switch to text mode");
+      return;
+    }
+
+    if (!isTechnical && !hasJD) {
+      toast.error("Job description is required for HR interviews");
       return;
     }
 
@@ -44,7 +57,11 @@ export default function SetupPage() {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("githubUsername", githubUsername.trim());
+      formData.append("interviewType", interviewType);
+
+      if (isTechnical) {
+        formData.append("githubUsername", githubUsername.trim());
+      }
 
       if (jdMode === "text" && jdText.trim()) {
         formData.append("jobDescriptionText", jdText.trim());
@@ -144,59 +161,207 @@ export default function SetupPage() {
             </div>
 
             <div className="space-y-8">
-              {/* ── GitHub Username ───────────────────────────────────── */}
+              {/* ── Interview Type Toggle ─────────────────────────────── */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45, duration: 0.5 }}
+                transition={{ delay: 0.42, duration: 0.5 }}
               >
                 <label
-                  htmlFor="github-username"
-                  className="block mb-2"
+                  className="block mb-3"
                   style={{
                     fontSize: "0.8125rem",
                     fontWeight: 500,
                     color: "var(--iv-text-primary)",
                   }}
                 >
-                  GitHub Username
+                  Interview Type
                   <span style={{ color: "hsl(var(--iv-accent))", marginLeft: 4 }}>*</span>
                 </label>
-                <div className="relative">
-                  <span
-                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                    style={{ color: "var(--iv-text-tertiary)" }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M8 1a7 7 0 00-2.21 13.64c.35.06.48-.15.48-.33v-1.17c-1.94.42-2.35-.93-2.35-.93a1.85 1.85 0 00-.78-1.02c-.63-.43.05-.42.05-.42a1.47 1.47 0 011.07.72 1.49 1.49 0 002.04.58 1.49 1.49 0 01.44-.93c-1.55-.18-3.18-.78-3.18-3.46a2.7 2.7 0 01.72-1.88 2.51 2.51 0 01.07-1.85s.59-.19 1.92.72a6.63 6.63 0 013.5 0c1.33-.9 1.92-.72 1.92-.72a2.51 2.51 0 01.07 1.85 2.7 2.7 0 01.72 1.88c0 2.69-1.64 3.28-3.19 3.46a1.67 1.67 0 01.47 1.29v1.92c0 .18.13.4.48.33A7 7 0 008 1z" fill="currentColor"/>
-                    </svg>
-                  </span>
-                  <input
-                    id="github-username"
-                    type="text"
-                    className="w-full"
-                    placeholder="e.g. torvalds"
-                    value={githubUsername}
-                    onChange={(e) => setGithubUsername(e.target.value)}
+                <div
+                  className="grid grid-cols-2 gap-3"
+                  role="radiogroup"
+                  aria-label="Interview type selection"
+                >
+                  {/* Technical option */}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={isTechnical}
+                    onClick={() => setInterviewType("technical")}
+                    className="relative text-left rounded-xl transition-all duration-200"
                     style={{
-                      background: "var(--iv-surface-2)",
-                      border: "1px solid var(--iv-border-subtle)",
-                      borderRadius: 12,
-                      padding: "12px 14px 12px 36px",
-                      fontSize: "0.875rem",
-                      color: "var(--iv-text-primary)",
+                      padding: "16px",
+                      background: isTechnical
+                        ? "rgba(82, 102, 255, 0.06)"
+                        : "var(--iv-surface-2)",
+                      border: isTechnical
+                        ? "1.5px solid rgba(82, 102, 255, 0.35)"
+                        : "1.5px solid var(--iv-border-subtle)",
+                      cursor: "pointer",
                       outline: "none",
-                      transition: "border-color 0.2s ease",
                     }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.3)";
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🖥️</span>
+                      <span
+                        style={{
+                          fontSize: "0.8125rem",
+                          fontWeight: 550,
+                          color: isTechnical
+                            ? "hsl(var(--iv-accent))"
+                            : "var(--iv-text-primary)",
+                        }}
+                      >
+                        Technical
+                      </span>
+                    </div>
+                    <p
+                      className="iv-body-sm"
+                      style={{
+                        margin: 0,
+                        fontSize: "0.7rem",
+                        lineHeight: 1.4,
+                        color: "var(--iv-text-tertiary)",
+                      }}
+                    >
+                      Coding, system design &amp; technical deep-dives
+                    </p>
+                    {/* Active indicator dot */}
+                    {isTechnical && (
+                      <motion.div
+                        layoutId="interviewTypeIndicator"
+                        className="absolute top-3 right-3 rounded-full"
+                        style={{
+                          width: 8,
+                          height: 8,
+                          background: "hsl(var(--iv-accent))",
+                        }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </button>
+
+                  {/* HR option */}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!isTechnical}
+                    onClick={() => setInterviewType("hr")}
+                    className="relative text-left rounded-xl transition-all duration-200"
+                    style={{
+                      padding: "16px",
+                      background: !isTechnical
+                        ? "rgba(82, 102, 255, 0.06)"
+                        : "var(--iv-surface-2)",
+                      border: !isTechnical
+                        ? "1.5px solid rgba(82, 102, 255, 0.35)"
+                        : "1.5px solid var(--iv-border-subtle)",
+                      cursor: "pointer",
+                      outline: "none",
                     }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--iv-border-subtle)";
-                    }}
-                  />
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🤝</span>
+                      <span
+                        style={{
+                          fontSize: "0.8125rem",
+                          fontWeight: 550,
+                          color: !isTechnical
+                            ? "hsl(var(--iv-accent))"
+                            : "var(--iv-text-primary)",
+                        }}
+                      >
+                        HR / Behavioral
+                      </span>
+                    </div>
+                    <p
+                      className="iv-body-sm"
+                      style={{
+                        margin: 0,
+                        fontSize: "0.7rem",
+                        lineHeight: 1.4,
+                        color: "var(--iv-text-tertiary)",
+                      }}
+                    >
+                      Behavioral, situational &amp; culture-fit questions
+                    </p>
+                    {!isTechnical && (
+                      <motion.div
+                        layoutId="interviewTypeIndicator"
+                        className="absolute top-3 right-3 rounded-full"
+                        style={{
+                          width: 8,
+                          height: 8,
+                          background: "hsl(var(--iv-accent))",
+                        }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </button>
                 </div>
               </motion.div>
+
+              {/* ── GitHub Username (technical only) ───────────────────── */}
+              <AnimatePresence>
+                {isTechnical && (
+                  <motion.div
+                    key="github-field"
+                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginTop: 0 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    style={{ overflow: "hidden" }}
+                  >
+                    <label
+                      htmlFor="github-username"
+                      className="block mb-2"
+                      style={{
+                        fontSize: "0.8125rem",
+                        fontWeight: 500,
+                        color: "var(--iv-text-primary)",
+                      }}
+                    >
+                      GitHub Username
+                      <span style={{ color: "hsl(var(--iv-accent))", marginLeft: 4 }}>*</span>
+                    </label>
+                    <div className="relative">
+                      <span
+                        className="absolute left-3 top-1/2 -translate-y-1/2"
+                        style={{ color: "var(--iv-text-tertiary)" }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <path d="M8 1a7 7 0 00-2.21 13.64c.35.06.48-.15.48-.33v-1.17c-1.94.42-2.35-.93-2.35-.93a1.85 1.85 0 00-.78-1.02c-.63-.43.05-.42.05-.42a1.47 1.47 0 011.07.72 1.49 1.49 0 002.04.58 1.49 1.49 0 01.44-.93c-1.55-.18-3.18-.78-3.18-3.46a2.7 2.7 0 01.72-1.88 2.51 2.51 0 01.07-1.85s.59-.19 1.92.72a6.63 6.63 0 013.5 0c1.33-.9 1.92-.72 1.92-.72a2.51 2.51 0 01.07 1.85 2.7 2.7 0 01.72 1.88c0 2.69-1.64 3.28-3.19 3.46a1.67 1.67 0 01.47 1.29v1.92c0 .18.13.4.48.33A7 7 0 008 1z" fill="currentColor"/>
+                        </svg>
+                      </span>
+                      <input
+                        id="github-username"
+                        type="text"
+                        className="w-full"
+                        placeholder="e.g. torvalds"
+                        value={githubUsername}
+                        onChange={(e) => setGithubUsername(e.target.value)}
+                        style={{
+                          background: "var(--iv-surface-2)",
+                          border: "1px solid var(--iv-border-subtle)",
+                          borderRadius: 12,
+                          padding: "12px 14px 12px 36px",
+                          fontSize: "0.875rem",
+                          color: "var(--iv-text-primary)",
+                          outline: "none",
+                          transition: "border-color 0.2s ease",
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.3)";
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = "var(--iv-border-subtle)";
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* ── Resume Upload ─────────────────────────────────────── */}
               <motion.div
@@ -233,9 +398,13 @@ export default function SetupPage() {
                   }}
                 >
                   Job Description
-                  <span className="iv-body-sm ml-2" style={{ fontWeight: 400, fontSize: "0.75rem" }}>
-                    (optional)
-                  </span>
+                  {isTechnical ? (
+                    <span className="iv-body-sm ml-2" style={{ fontWeight: 400, fontSize: "0.75rem" }}>
+                      (optional)
+                    </span>
+                  ) : (
+                    <span style={{ color: "hsl(var(--iv-accent))", marginLeft: 4 }}>*</span>
+                  )}
                 </label>
 
                 {/* Mode toggle */}
@@ -455,7 +624,7 @@ export default function SetupPage() {
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
-                      Start Interview
+                      Start {isTechnical ? "Technical" : "HR"} Interview
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>

@@ -10,13 +10,32 @@ datasource db {
   provider  = "postgresql"
 }
 
+model User {
+  id             String      @id @default(uuid())
+  email          String      @unique
+  name           String?
+  passwordHash   String 
+  authProvider   AuthProvider @default(EMAIL) 
+  interviews     Interview[] 
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+} 
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+}
+
 model Interview {
   id             String          @id @default(uuid())
-  githubUsername String
-  githubMetadata Json
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])  
+  githubUsername  String?
+  githubMetadata Json?
   jdSummary      String?
   resumeSummary  String?
   systemPrompt   String
+  interviewType  InterviewType   @default(Technical)
   status         InterviewStatus @default(Inprogress)
   score          Int             @default(0)
   messages       Message[]
@@ -35,6 +54,11 @@ model Message {
 enum MessageRole {
   Interviewee
   Interviewer
+}
+
+enum InterviewType {
+  Technical
+  HR
 }
 
 enum InterviewStatus {

@@ -6,10 +6,22 @@ import { summarizeJD, summarizeResume } from "../services/summarize.service";
 import { buildSystemPrompt } from "../utils/buildSystemPrompt";
 
 export async function handleInterviewStart(req: Request, res: Response): Promise<void> {
-  const { githubUsername, jobDescriptionText } = req.body;
+  const { githubUsername, jobDescriptionText, interviewType: rawType} = req.body;
+  const userId = req.user?.userId;
 
-  if (!githubUsername) {
-    res.status(400).json({ error: "GitHub username is required" });
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const interviewType: "technical" | "hr" =
+    rawType === "hr" ? "hr" : "technical";
+
+  const isTechnical = interviewType === "technical";
+
+  // ── Validate required fields per interview type ──────────────────────────
+  if (isTechnical && !githubUsername) {
+    res.status(400).json({ error: "GitHub username is required for technical interviews" });
     return;
   }
 
@@ -43,39 +55,55 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
     return;
   }
 
+  // HR interviews require a JD since it's the primary source for questions
+  if (!isTechnical && !rawJdText) {
+    res.status(400).json({ error: "Job description is required for HR interviews" });
+    return;
+  }
+
   // ── Run external calls in parallel ───────────────────────────────────────
+  // For HR interviews: skip GitHub scraping entirely to save resources
   const [reposResult, jdSummaryResult, resumeSummaryResult] = await Promise.allSettled([
-    githubScraper(githubUsername),
+    isTechnical ? githubScraper(githubUsername) : Promise.resolve(null),
     rawJdText ? summarizeJD(rawJdText) : Promise.resolve(null),
     rawResumeText ? summarizeResume(rawResumeText) : Promise.resolve(null)
   ]);
 
-  if (reposResult.status === "rejected") {
+  if (isTechnical && reposResult.status === "rejected") {
     res.status(404).json({ error: "GitHub user not found or API error" });
     return;
   }
 
-  const repos = reposResult.value;
+  const repos = reposResult.status === "fulfilled" ? reposResult.value : null;
   const jdSummary = jdSummaryResult.status === "fulfilled" ? jdSummaryResult.value : null;
   const resumeSummary = resumeSummaryResult.status === "fulfilled" ? resumeSummaryResult.value : null;
 
-  const repoSummary = repos
-    .slice(0, 15)
-    .map((r: { name: string; description: string | null; starCount: number }) =>
-      `- ${r.name}${r.description ? `: ${r.description}` : ""} (⭐ ${r.starCount})`
-    )
-    .join("\n");
+  const repoSummary = isTechnical && repos
+    ? repos
+        .slice(0, 15)
+        .map((r: { name: string; description: string | null; starCount: number }) =>
+          `- ${r.name}${r.description ? `: ${r.description}` : ""} (⭐ ${r.starCount})`
+        )
+        .join("\n")
+    : undefined;
 
   // ── Build system prompt ─────────────────────────────────────────────────
-  const systemPrompt = buildSystemPrompt({ repoSummary, jdSummary, resumeSummary });
+  const systemPrompt = buildSystemPrompt({
+    interviewType,
+    repoSummary,
+    jdSummary,
+    resumeSummary,
+  });
 
   const interview = await db.interview.create({
     data: {
-      githubUsername,
-      githubMetadata: repos as object[],
+      userId,
+      githubUsername: isTechnical ? githubUsername : null,
+      githubMetadata: isTechnical && repos ? (repos as object[]) : undefined,
       jdSummary,
       resumeSummary,
       systemPrompt,
+      interviewType: isTechnical ? "Technical" : "HR",
     },
   });
 
