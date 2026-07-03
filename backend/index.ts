@@ -7,9 +7,9 @@ import { Server } from "socket.io";
 import { PORT } from "./config";
 import { createSpeechClient } from "./services/speech.service";
 import { registerSocketHandlers } from "./handlers/socket.handler";
-import { handleInterviewStart } from "./routes/interview.routes";
+import { handleInterviewStart } from "./controllers/interview.controller";
 import authRoutes from './routes/auth.routes';
-import { authenticateJWT } from "./middleware";
+import { authenticateJWT } from "./middlewares/auth.middleware";
 
 const app = express();
 const server = http.createServer(app);
