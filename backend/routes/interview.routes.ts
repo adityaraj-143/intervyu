@@ -6,7 +6,13 @@ import { summarizeJD, summarizeResume } from "../services/summarize.service";
 import { buildSystemPrompt } from "../utils/buildSystemPrompt";
 
 export async function handleInterviewStart(req: Request, res: Response): Promise<void> {
-  const { githubUsername, jobDescriptionText, interviewType: rawType } = req.body;
+  const { githubUsername, jobDescriptionText, interviewType: rawType} = req.body;
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
 
   const interviewType: "technical" | "hr" =
     rawType === "hr" ? "hr" : "technical";
@@ -91,6 +97,7 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
 
   const interview = await db.interview.create({
     data: {
+      userId,
       githubUsername: isTechnical ? githubUsername : null,
       githubMetadata: isTechnical && repos ? (repos as object[]) : undefined,
       jdSummary,

@@ -9,6 +9,7 @@ import { createSpeechClient } from "./services/speech.service";
 import { registerSocketHandlers } from "./handlers/socket.handler";
 import { handleInterviewStart } from "./routes/interview.routes";
 import authRoutes from './routes/auth.routes';
+import { authenticateJWT } from "./middleware";
 
 const app = express();
 const server = http.createServer(app);
@@ -39,6 +40,7 @@ io.on("connection", (socket) => {
 
 app.post(
   "/api/v1/interview",
+  authenticateJWT,
   upload.fields([
     { name: "jobDescriptionPdf", maxCount: 1 },
     { name: "resumePdf", maxCount: 1 }
