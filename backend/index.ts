@@ -8,6 +8,7 @@ import { PORT } from "./config";
 import { createSpeechClient } from "./services/speech.service";
 import { registerSocketHandlers } from "./handlers/socket.handler";
 import { handleInterviewStart } from "./routes/interview.routes";
+import authRoutes from './routes/auth.routes';
 
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +45,8 @@ app.post(
   ]),
   handleInterviewStart
 );
+
+app.use('/api/v1/auth/', authRoutes)
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
