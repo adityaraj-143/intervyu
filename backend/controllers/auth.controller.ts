@@ -84,6 +84,12 @@ export const login = async (req: Request, res: Response) => {
   res.send("Login successful");
 };
 
+export const logout = async (req: Request, res: Response) => {
+  res.clearCookie("accessToken", getAccessTokenCookieOptions());
+  res.clearCookie("refreshToken", getRefreshTokenCookieOptions());
+  res.send("Logged out successfully");
+};
+
 export const refresh = (req: Request, res: Response) => {
   const refreshToken = req.cookies.refreshToken;
 
