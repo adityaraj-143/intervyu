@@ -2,6 +2,7 @@
 import express from "express";
 import http from "http";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import multer from "multer";
 import { Server } from "socket.io";
 import { PORT } from "./config";
@@ -14,11 +15,14 @@ import { authenticateJWT } from "./middlewares/auth.middleware";
 const app = express();
 const server = http.createServer(app);
 
+const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
+
 const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: { origin: FRONTEND_URL, credentials: true },
 });
 
-app.use(cors());
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+app.use(cookieParser());
 app.use(express.json());
 
 const speechClient = createSpeechClient();

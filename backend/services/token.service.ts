@@ -5,17 +5,19 @@ type AuthPayload = {
   email: string;
 };
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const accessTokenCookieOptions = {
   httpOnly: true,
-  secure: true,
-  sameSite: "strict" as const,
+  secure: isProduction,
+  sameSite: isProduction ? ("strict" as const) : ("lax" as const),
   maxAge: 15 * 60 * 1000,
 };
 
 const refreshTokenCookieOptions = {
   httpOnly: true,
-  secure: true,
-  sameSite: "strict" as const,
+  secure: isProduction,
+  sameSite: isProduction ? ("strict" as const) : ("lax" as const),
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -43,3 +45,4 @@ export function getRefreshTokenCookieOptions() {
 export function getAccessTokenCookieOptions() {
   return accessTokenCookieOptions;
 }
+
