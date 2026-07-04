@@ -38,7 +38,7 @@ export default function AnalyticsPreview() {
         <div>
           <p className="iv-label mb-1">Interview Analytics</p>
           <h3 className="iv-heading-sm" style={{ fontSize: "1rem" }}>
-            Performance Breakdown
+            Post-Interview Feedback
           </h3>
         </div>
         <div

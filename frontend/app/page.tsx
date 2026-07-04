@@ -63,6 +63,75 @@ export default function Home() {
         overflow: "hidden",
       }}
     >
+      {/* ── Top Nav ────────────────────────────────────────────────── */}
+      <nav
+        className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 md:px-10 py-4"
+        style={{ zIndex: 20 }}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className="rounded-lg flex items-center justify-center"
+            style={{
+              width: 28,
+              height: 28,
+              background: "rgba(82, 102, 255, 0.1)",
+              border: "1px solid rgba(82, 102, 255, 0.15)",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="4" width="12" height="8" rx="2" stroke="hsl(var(--iv-accent))" strokeWidth="1.2"/>
+              <path d="M4 4V3a3 3 0 016 0v1" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--iv-text-primary)" }}>
+            intervyu
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <a
+            href="/login"
+            className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
+            style={{
+              fontSize: "0.8125rem",
+              fontWeight: 500,
+              color: "var(--iv-text-secondary)",
+              background: "transparent",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--iv-text-primary)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--iv-text-secondary)";
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            Sign In
+          </a>
+          <a
+            href="/signup"
+            className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
+            style={{
+              fontSize: "0.8125rem",
+              fontWeight: 500,
+              color: "#fff",
+              background: "rgba(82, 102, 255, 0.15)",
+              border: "1px solid rgba(82, 102, 255, 0.25)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(82, 102, 255, 0.25)";
+              e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(82, 102, 255, 0.15)";
+              e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.25)";
+            }}
+          >
+            Sign Up
+          </a>
+        </div>
+      </nav>
+
       {/* ── Section 1: Hero ──────────────────────────────────────────── */}
       <div className="relative">
         <LandingHero />
@@ -99,8 +168,8 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.9, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              Practice with an AI interviewer that analyzes your GitHub, adapts in real-time,
-              and provides actionable feedback.
+              Practice with an AI interviewer that analyzes your GitHub, adapts questions
+              in real-time, and helps you improve through voice-based mock sessions.
             </motion.p>
 
             <motion.div
@@ -230,8 +299,8 @@ export default function Home() {
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.6 }}
           >
-            <p className="iv-label mb-3">Testimonials</p>
-            <h2 className="iv-heading-md">What engineers are saying</h2>
+            <p className="iv-label mb-3">Why Intervyu</p>
+            <h2 className="iv-heading-md">Built different from day one</h2>
           </motion.div>
 
           <Testimonials />

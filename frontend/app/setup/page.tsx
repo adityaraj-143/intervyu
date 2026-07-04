@@ -75,6 +75,7 @@ export default function SetupPage() {
 
       const resp = await axios.post(`${BACKEND_URL}/api/v1/interview`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
       });
 
       if (resp.status === 200) {
@@ -133,7 +134,7 @@ export default function SetupPage() {
         >
           <div className="w-full" style={{ maxWidth: 520 }}>
             {/* Header */}
-            <div className="mb-10">
+            <div className="mb-6">
               <motion.p
                 className="iv-label mb-3"
                 initial={{ opacity: 0 }}
@@ -160,7 +161,7 @@ export default function SetupPage() {
               </motion.p>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-5">
               {/* ── Interview Type Toggle ─────────────────────────────── */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
@@ -467,7 +468,7 @@ export default function SetupPage() {
                         placeholder="Paste the job description here..."
                         value={jdText}
                         onChange={(e) => setJdText(e.target.value)}
-                        rows={5}
+                        rows={3}
                         style={{
                           background: "var(--iv-surface-2)",
                           border: "1px solid var(--iv-border-subtle)",
@@ -638,133 +639,188 @@ export default function SetupPage() {
 
         {/* ── Right: Visual context ──────────────────────────────────── */}
         <motion.aside
-          className="hidden lg:flex flex-col items-center justify-center flex-1"
+          className="hidden lg:flex flex-col items-center flex-1 relative"
           style={{
             background: "var(--iv-surface-1)",
             borderLeft: "1px solid var(--iv-border-subtle)",
-            padding: "48px 40px",
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.3 }}
         >
-          <div style={{ maxWidth: 380 }}>
-            {/* Visual card */}
-            <motion.div
-              className="iv-card-glass mb-8"
-              style={{ padding: "32px 28px" }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.6 }}
-            >
-              <div className="flex items-center gap-3 mb-6">
-                <div
-                  className="rounded-full"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    background: "rgba(82, 102, 255, 0.08)",
-                    border: "1px solid rgba(82, 102, 255, 0.15)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="5" y="1.5" width="6" height="9" rx="3" stroke="hsl(var(--iv-accent))" strokeWidth="1.2"/>
-                    <path d="M3 8.5a5 5 0 0010 0" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
-                    <path d="M8 13.5v1.5" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
+          <div className="sticky top-0 w-full h-screen flex flex-col items-center justify-center p-12 overflow-y-auto">
+            <div style={{ maxWidth: 400, width: "100%" }}>
+              
+              {/* Pipeline context */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div
+                    className="rounded-full flex items-center justify-center"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      background: "rgba(82, 102, 255, 0.1)",
+                      color: "hsl(var(--iv-accent))",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    1
+                  </div>
+                  <div className="h-px flex-1" style={{ background: "var(--iv-border-subtle)" }} />
+                  <div
+                    className="rounded-full flex items-center justify-center"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      background: "var(--iv-surface-3)",
+                      color: "var(--iv-text-tertiary)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    2
+                  </div>
+                  <div className="h-px flex-1" style={{ background: "var(--iv-border-subtle)" }} />
+                  <div
+                    className="rounded-full flex items-center justify-center"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      background: "var(--iv-surface-3)",
+                      color: "var(--iv-text-tertiary)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    3
+                  </div>
                 </div>
-                <div>
-                  <p style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--iv-text-primary)", marginBottom: 1 }}>
-                    Voice Interview
-                  </p>
-                  <p className="iv-body-sm" style={{ margin: 0, fontSize: "0.6875rem" }}>
-                    Natural conversation with AI
-                  </p>
+                <div className="flex justify-between px-1">
+                  <span className="iv-body-sm" style={{ color: "var(--iv-text-primary)", fontWeight: 500 }}>Setup</span>
+                  <span className="iv-body-sm" style={{ color: "var(--iv-text-tertiary)" }}>Interview</span>
+                  <span className="iv-body-sm" style={{ color: "var(--iv-text-tertiary)" }}>Feedback</span>
                 </div>
               </div>
 
-              {/* Fake waveform */}
-              <div className="flex items-center gap-[3px]" style={{ height: 40, padding: "0 4px" }}>
-                {Array.from({ length: 32 }, (_, i) => {
-                  const h = Math.sin(i * 0.4) * 12 + Math.random() * 8 + 6;
-                  return (
-                    <motion.div
-                      key={i}
-                      className="rounded-full"
-                      style={{
-                        width: 2.5,
-                        background: `rgba(82, 102, 255, ${0.2 + Math.random() * 0.3})`,
-                      }}
-                      animate={{
-                        height: [h, h * 0.6, h * 1.2, h],
-                      }}
-                      transition={{
-                        duration: 1.5 + Math.random() * 0.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: i * 0.04,
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </motion.div>
-
-            {/* Info cards */}
-            <div className="space-y-4">
-              {[
-                {
-                  icon: "⚡",
-                  title: "Adaptive difficulty",
-                  desc: "Questions adjust to your skill level in real-time",
-                },
-                {
-                  icon: "🎯",
-                  title: "Role-specific",
-                  desc: "Tailored to the exact position you're targeting",
-                },
-                {
-                  icon: "📊",
-                  title: "Detailed feedback",
-                  desc: "Comprehensive scoring across multiple dimensions",
-                },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.title}
-                  className="flex items-start gap-3 p-4 rounded-xl"
-                  style={{
-                    background: "var(--iv-surface-2)",
-                    border: "1px solid var(--iv-border-subtle)",
-                  }}
-                  initial={{ opacity: 0, x: 15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{
-                    delay: 0.8 + i * 0.12,
-                    duration: 0.5,
-                    ease: [0.25, 0.46, 0.45, 0.94],
-                  }}
-                >
-                  <span style={{ fontSize: "1rem", lineHeight: 1 }}>{item.icon}</span>
+              {/* Visual card */}
+              <motion.div
+                className="iv-card-glass mb-8"
+                style={{ padding: "32px 28px" }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.6 }}
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div
+                    className="rounded-full"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      background: "rgba(82, 102, 255, 0.08)",
+                      border: "1px solid rgba(82, 102, 255, 0.15)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="5" y="1.5" width="6" height="9" rx="3" stroke="hsl(var(--iv-accent))" strokeWidth="1.2"/>
+                      <path d="M3 8.5a5 5 0 0010 0" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
+                      <path d="M8 13.5v1.5" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                  </div>
                   <div>
-                    <p
-                      style={{
-                        fontSize: "0.8125rem",
-                        fontWeight: 500,
-                        color: "var(--iv-text-primary)",
-                        marginBottom: 2,
-                      }}
-                    >
-                      {item.title}
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--iv-text-primary)", marginBottom: 1 }}>
+                      Voice Interview
                     </p>
-                    <p className="iv-body-sm" style={{ margin: 0, fontSize: "0.75rem" }}>
-                      {item.desc}
+                    <p className="iv-body-sm" style={{ margin: 0, fontSize: "0.6875rem" }}>
+                      Natural conversation with AI
                     </p>
                   </div>
-                </motion.div>
-              ))}
+                </div>
+
+                {/* Fake waveform */}
+                <div className="flex items-center justify-center gap-[4px]" style={{ height: 48, padding: "0 4px" }}>
+                  {Array.from({ length: 32 }, (_, i) => {
+                    const h = Math.sin(i * 0.4) * 16 + Math.random() * 12 + 8;
+                    return (
+                      <motion.div
+                        key={i}
+                        className="rounded-full"
+                        style={{
+                          width: 3,
+                          background: `rgba(82, 102, 255, ${0.2 + Math.random() * 0.4})`,
+                        }}
+                        animate={{
+                          height: [h, h * 0.6, h * 1.2, h],
+                        }}
+                        transition={{
+                          duration: 1.5 + Math.random() * 0.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.04,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              {/* Expectations */}
+              <div className="space-y-4">
+                <h3 className="iv-label mb-3">What to expect</h3>
+                {[
+                  {
+                    icon: "⏱️",
+                    title: "10-minute limit",
+                    desc: "Sessions are timed to keep you focused.",
+                  },
+                  {
+                    icon: "🎙️",
+                    title: "Voice-first",
+                    desc: "Make sure your microphone is working.",
+                  },
+                  {
+                    icon: "🧠",
+                    title: "Adaptive difficulty",
+                    desc: "Questions adjust to your responses.",
+                  },
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.title}
+                    className="flex items-start gap-3 p-4 rounded-xl"
+                    style={{
+                      background: "var(--iv-surface-2)",
+                      border: "1px solid var(--iv-border-subtle)",
+                    }}
+                    initial={{ opacity: 0, x: 15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      delay: 0.8 + i * 0.12,
+                      duration: 0.5,
+                      ease: [0.25, 0.46, 0.45, 0.94],
+                    }}
+                  >
+                    <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>{item.icon}</span>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: "0.8125rem",
+                          fontWeight: 500,
+                          color: "var(--iv-text-primary)",
+                          marginBottom: 2,
+                        }}
+                      >
+                        {item.title}
+                      </p>
+                      <p className="iv-body-sm" style={{ margin: 0, fontSize: "0.75rem" }}>
+                        {item.desc}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </div>
         </motion.aside>

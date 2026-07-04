@@ -84,7 +84,7 @@ export default function ResumeUpload({ file, onFileChange }: ResumeUploadProps) 
                 isDragging ? "rgba(82, 102, 255, 0.5)" : "var(--iv-border-medium)"
               }`,
               borderRadius: 16,
-              padding: "40px 24px",
+              padding: "28px 20px",
               textAlign: "center",
               background: isDragging
                 ? "rgba(82, 102, 255, 0.04)"
