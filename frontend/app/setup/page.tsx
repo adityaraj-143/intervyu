@@ -685,69 +685,7 @@ export default function SetupPage() {
                 </div>
               </div>
 
-              {/* Visual card */}
-              <motion.div
-                className="iv-card-glass mb-8"
-                style={{ padding: "32px 28px" }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6, duration: 0.6 }}
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <div
-                    className="rounded-full"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      background: "rgba(82, 102, 255, 0.08)",
-                      border: "1px solid rgba(82, 102, 255, 0.15)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <rect x="5" y="1.5" width="6" height="9" rx="3" stroke="hsl(var(--iv-accent))" strokeWidth="1.2"/>
-                      <path d="M3 8.5a5 5 0 0010 0" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
-                      <path d="M8 13.5v1.5" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--iv-text-primary)", marginBottom: 1 }}>
-                      Voice Interview
-                    </p>
-                    <p className="iv-body-sm" style={{ margin: 0, fontSize: "0.6875rem" }}>
-                      Natural conversation with AI
-                    </p>
-                  </div>
-                </div>
 
-                {/* Fake waveform */}
-                <div className="flex items-center justify-center gap-[4px]" style={{ height: 48, padding: "0 4px" }}>
-                  {Array.from({ length: 32 }, (_, i) => {
-                    const h = Math.sin(i * 0.4) * 16 + Math.random() * 12 + 8;
-                    return (
-                      <motion.div
-                        key={i}
-                        className="rounded-full"
-                        style={{
-                          width: 3,
-                          background: `rgba(82, 102, 255, ${0.2 + Math.random() * 0.4})`,
-                        }}
-                        animate={{
-                          height: [h, h * 0.6, h * 1.2, h],
-                        }}
-                        transition={{
-                          duration: 1.5 + Math.random() * 0.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: i * 0.04,
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              </motion.div>
 
               {/* ── Voice Selection ───────────────────────────────────── */}
               <motion.div
