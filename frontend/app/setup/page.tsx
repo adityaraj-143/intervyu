@@ -570,24 +570,6 @@ export default function SetupPage() {
                 </AnimatePresence>
               </motion.div>
 
-              {/* ── Voice Selection ───────────────────────────────────── */}
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.75, duration: 0.5 }}
-              >
-                <label
-                  className="block mb-2"
-                  style={{
-                    fontSize: "0.8125rem",
-                    fontWeight: 500,
-                    color: "var(--iv-text-primary)",
-                  }}
-                >
-                  Interviewer Voice
-                </label>
-                <VoiceSelector selected={selectedVoice} onSelect={setSelectedVoice} />
-              </motion.div>
 
               {/* ── Start Button ──────────────────────────────────────── */}
               <motion.div
@@ -765,6 +747,26 @@ export default function SetupPage() {
                     );
                   })}
                 </div>
+              </motion.div>
+
+              {/* ── Voice Selection ───────────────────────────────────── */}
+              <motion.div
+                className="mb-8"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7, duration: 0.6 }}
+              >
+                <label
+                  className="block mb-3"
+                  style={{
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    color: "var(--iv-text-primary)",
+                  }}
+                >
+                  Select Interviewer Voice
+                </label>
+                <VoiceSelector selected={selectedVoice} onSelect={setSelectedVoice} />
               </motion.div>
 
               {/* Expectations */}
