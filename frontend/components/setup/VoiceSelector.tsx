@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { motion } from "framer-motion";
 
 interface VoiceSelectorProps {
@@ -67,8 +68,15 @@ function MiniWaveform({ bars, active }: { bars: number[]; active: boolean }) {
 }
 
 export default function VoiceSelector({ selected, onSelect }: VoiceSelectorProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const playPreview = (src: string) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     const audio = new Audio(src);
+    audioRef.current = audio;
     audio.play().catch(err => console.error("Error playing audio preview", err));
   };
 
