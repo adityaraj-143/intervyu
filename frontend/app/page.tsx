@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import LandingHero from "@/components/landing/LandingHero";
 import FeatureCard from "@/components/landing/FeatureCard";
@@ -8,6 +9,7 @@ import Testimonials from "@/components/landing/Testimonials";
 import AnalyticsPreview from "@/components/landing/AnalyticsPreview";
 import RolesMarquee from "@/components/landing/RolesMarquee";
 import MagneticButton from "@/components/landing/MagneticButton";
+import { getMe, logoutUser } from "@/lib/api";
 
 const features = [
   {
@@ -55,6 +57,27 @@ const features = [
 ];
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getMe()
+      .then((res) => {
+        setUser(res.data);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const handleLogout = async () => {
+    await logoutUser();
+    setUser(null);
+  };
+
   return (
     <main
       style={{
@@ -88,47 +111,100 @@ export default function Home() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <a
-            href="/login"
-            className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
-            style={{
-              fontSize: "0.8125rem",
-              fontWeight: 500,
-              color: "var(--iv-text-secondary)",
-              background: "transparent",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--iv-text-primary)";
-              e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--iv-text-secondary)";
-              e.currentTarget.style.background = "transparent";
-            }}
-          >
-            Sign In
-          </a>
-          <a
-            href="/signup"
-            className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
-            style={{
-              fontSize: "0.8125rem",
-              fontWeight: 500,
-              color: "#fff",
-              background: "rgba(82, 102, 255, 0.15)",
-              border: "1px solid rgba(82, 102, 255, 0.25)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(82, 102, 255, 0.25)";
-              e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(82, 102, 255, 0.15)";
-              e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.25)";
-            }}
-          >
-            Sign Up
-          </a>
+          {!loading && user ? (
+            <>
+              <span className="text-sm font-medium mr-2" style={{ color: "var(--iv-text-secondary)" }}>
+                {user.name}
+              </span>
+              <a
+                href="/setup"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "#fff",
+                  background: "rgba(82, 102, 255, 0.15)",
+                  border: "1px solid rgba(82, 102, 255, 0.25)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.25)";
+                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.15)";
+                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.25)";
+                }}
+              >
+                Dashboard
+              </a>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 rounded-lg transition-all duration-200"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "var(--iv-text-secondary)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--iv-text-primary)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--iv-text-secondary)";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                Sign Out
+              </button>
+            </>
+          ) : !loading && !user ? (
+            <>
+              <a
+                href="/login"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "var(--iv-text-secondary)",
+                  background: "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--iv-text-primary)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--iv-text-secondary)";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                Sign In
+              </a>
+              <a
+                href="/signup"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "#fff",
+                  background: "rgba(82, 102, 255, 0.15)",
+                  border: "1px solid rgba(82, 102, 255, 0.25)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.25)";
+                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.15)";
+                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.25)";
+                }}
+              >
+                Sign Up
+              </a>
+            </>
+          ) : null}
         </div>
       </nav>
 

@@ -14,6 +14,8 @@ export const metadata: Metadata = {
     "Practice with an AI interviewer that analyzes your GitHub, adapts in real-time, and provides actionable feedback across system design, data structures, and communication.",
 };
 
+import { Providers } from "@/components/providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -25,8 +27,10 @@ export default function RootLayout({
       className={`${outfit.variable} h-full antialiased dark font-sans`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster/>
+        <Providers>
+          {children}
+          <Toaster/>
+        </Providers>
       </body>
     </html>
   );

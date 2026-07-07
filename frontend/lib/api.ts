@@ -100,5 +100,9 @@ export async function googleAuth(idToken: string) {
   return api.post("/api/v1/auth/google", { idToken });
 }
 
+export async function getMe() {
+  return api.get("/api/v1/auth/me");
+}
+
 export default api;
 
