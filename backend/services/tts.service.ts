@@ -1,6 +1,5 @@
 import type { Socket } from "socket.io";
 
-const VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // George
 const MODEL_ID = "eleven_flash_v2_5";     // low-latency model
 
 export class TtsSession {
@@ -14,11 +13,11 @@ export class TtsSession {
     this.ws = ws;
   }
 
-  static async create(socket: Socket): Promise<TtsSession> {
+  static async create(socket: Socket, voiceId: string): Promise<TtsSession> {
     const apiKey = process.env.ELEVENLABS_API_KEY;
     if (!apiKey) throw new Error("ELEVENLABS_API_KEY not set");
 
-    const url = `wss://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream-input?model_id=${MODEL_ID}&output_format=pcm_24000`;
+    const url = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${MODEL_ID}&output_format=pcm_24000`;
     console.log("[TTS] Connecting to ElevenLabs...");
 
     const ws = new WebSocket(url, {

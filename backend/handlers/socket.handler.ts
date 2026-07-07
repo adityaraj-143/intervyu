@@ -13,6 +13,7 @@ export function registerSocketHandlers(
 
   let interviewId: string | null = null;
   let systemPrompt: string | null = null;
+  let voiceId: string | null = null;
 
   let sampleRate = 48000; // updated by sttConfig event from frontend
   let fullMessage = "";
@@ -27,6 +28,7 @@ export function registerSocketHandlers(
       const interview = await db.interview.findUniqueOrThrow({ where: { id } });
       interviewId = interview.id;
       systemPrompt = interview.systemPrompt;
+      voiceId = interview.voiceId;
       console.log(`[socket] Joined interview ${interviewId}`);
     } catch {
       console.error(`[socket] Interview ${id} not found`);
@@ -87,7 +89,7 @@ export function registerSocketHandlers(
       recognizeStream = null;
     }
 
-    const llmResponse = await callLLM(conversation, socket, systemPrompt);
+    const llmResponse = await callLLM(conversation, socket, systemPrompt, voiceId || "JBFqnCBsd6RMkjVDRZzb");
 
     // Persist both sides to DB
     if (interviewId) {

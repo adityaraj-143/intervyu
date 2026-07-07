@@ -21,7 +21,7 @@ export default function SetupPage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState("professional");
+  const [selectedVoice, setSelectedVoice] = useState("JBFqnCBsd6RMkjVDRZzb");
 
   const jdFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -58,6 +58,7 @@ export default function SetupPage() {
     try {
       const formData = new FormData();
       formData.append("interviewType", interviewType);
+      formData.append("voiceId", selectedVoice);
 
       if (isTechnical) {
         formData.append("githubUsername", githubUsername.trim());

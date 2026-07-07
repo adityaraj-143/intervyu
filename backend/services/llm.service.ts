@@ -6,13 +6,13 @@ import { TtsSession } from "./tts.service";
 const BOUNDARY_REGEX = /[.,!?;:]/;
 const FLUSH_TIMEOUT_MS = 3000;
 
-export async function callLLM(conversation: Conversation, socket: Socket, systemPrompt: string): Promise<string> {
+export async function callLLM(conversation: Conversation, socket: Socket, systemPrompt: string, voiceId: string): Promise<string> {
   console.log("[LLM] Starting Groq stream...");
   const groq = new Groq();
   const stream = await getGroqChatStream(groq, conversation, systemPrompt);
   console.log("[LLM] Groq stream opened, connecting TTS...");
 
-  const tts = await TtsSession.create(socket);
+  const tts = await TtsSession.create(socket, voiceId);
   console.log("[LLM] TTS connected, reading stream...");
 
   let fullResponse = "";

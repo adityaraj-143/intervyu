@@ -6,7 +6,7 @@ import { summarizeJD, summarizeResume } from "../services/summarize.service";
 import { buildSystemPrompt } from "../utils/buildSystemPrompt";
 
 export async function handleInterviewStart(req: Request, res: Response): Promise<void> {
-  const { githubUsername, jobDescriptionText, interviewType: rawType} = req.body;
+  const { githubUsername, jobDescriptionText, interviewType: rawType, voiceId } = req.body;
   const userId = req.user?.userId;
 
   if (!userId) {
@@ -103,6 +103,7 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
       jdSummary,
       resumeSummary,
       systemPrompt,
+      voiceId: voiceId || "JBFqnCBsd6RMkjVDRZzb",
       interviewType: isTechnical ? "Technical" : "HR",
     },
   });

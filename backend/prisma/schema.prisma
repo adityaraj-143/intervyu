@@ -35,6 +35,7 @@ model Interview {
   jdSummary      String?
   resumeSummary  String?
   systemPrompt   String
+  voiceId        String          @default("JBFqnCBsd6RMkjVDRZzb")
   interviewType  InterviewType   @default(Technical)
   status         InterviewStatus @default(Inprogress)
   score          Int             @default(0)

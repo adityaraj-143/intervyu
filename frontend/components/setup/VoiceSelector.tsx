@@ -9,21 +9,24 @@ interface VoiceSelectorProps {
 
 const voices = [
   {
-    id: "professional",
-    name: "Professional",
-    description: "Clear, measured tone",
+    id: "JBFqnCBsd6RMkjVDRZzb",
+    name: "George",
+    description: "Warm, captivating storyteller",
+    src: "/george.mp3",
     waveform: [3, 6, 4, 8, 5, 7, 3, 6, 4, 5, 7, 3],
   },
   {
-    id: "conversational",
-    name: "Conversational",
-    description: "Warm, natural delivery",
+    id: "fATgBRI8wg5KkDFg8vBd",
+    name: "James",
+    description: "British, professional, smooth",
+    src: "/james.mp3",
     waveform: [2, 5, 8, 4, 6, 3, 7, 5, 4, 6, 3, 5],
   },
   {
-    id: "technical",
-    name: "Technical",
-    description: "Precise, analytical style",
+    id: "XrExE9yKIg1WjnnlVkGX",
+    name: "Matilda",
+    description: "Knowledgable, professional",
+    src: "/matilda.mp3",
     waveform: [4, 7, 3, 6, 8, 4, 5, 7, 3, 4, 6, 5],
   },
 ];
@@ -64,6 +67,11 @@ function MiniWaveform({ bars, active }: { bars: number[]; active: boolean }) {
 }
 
 export default function VoiceSelector({ selected, onSelect }: VoiceSelectorProps) {
+  const playPreview = (src: string) => {
+    const audio = new Audio(src);
+    audio.play().catch(err => console.error("Error playing audio preview", err));
+  };
+
   return (
     <div className="grid grid-cols-3 gap-3">
       {voices.map((voice) => {
@@ -71,7 +79,10 @@ export default function VoiceSelector({ selected, onSelect }: VoiceSelectorProps
         return (
           <motion.button
             key={voice.id}
-            onClick={() => onSelect(voice.id)}
+            onClick={() => {
+              onSelect(voice.id);
+              playPreview(voice.src);
+            }}
             className="relative text-left"
             style={{
               padding: "16px 14px",
