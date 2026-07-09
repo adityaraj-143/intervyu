@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 
 interface AIVideoBlobProps {
   isSpeaking: boolean;
@@ -10,6 +11,12 @@ interface AIVideoBlobProps {
 export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
+  const speakingRef = useRef(isSpeaking);
+
+  // Keep speakingRef in sync
+  useEffect(() => {
+    speakingRef.current = isSpeaking;
+  }, [isSpeaking]);
 
   const draw = useCallback((canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, time: number, speaking: boolean) => {
     const w = canvas.width;
@@ -136,8 +143,6 @@ export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps)
     const resizeObserver = new ResizeObserver(resize);
     if (canvas.parentElement) resizeObserver.observe(canvas.parentElement);
 
-    let speakingRef = isSpeaking;
-
     const loop = (time: number) => {
       const dpr = window.devicePixelRatio || 1;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -147,25 +152,24 @@ export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps)
       ctx.scale(dpr, dpr);
       draw(
         { ...canvas, width: drawW, height: drawH } as unknown as HTMLCanvasElement,
-        ctx, time, speakingRef
+        ctx, time, speakingRef.current
       );
       animRef.current = requestAnimationFrame(loop);
     };
 
     animRef.current = requestAnimationFrame(loop);
-    speakingRef = isSpeaking;
 
     return () => {
       cancelAnimationFrame(animRef.current);
       resizeObserver.disconnect();
     };
-  }, [isSpeaking, draw]);
+  }, [draw]);
 
   return (
     <div
       className={`
         relative rounded-[20px] overflow-hidden border transition-[border-color] duration-400 ease-in-out
-        flex-[1.2] flex items-center justify-center max-md:flex-1
+        flex-[0.85] flex items-center justify-center max-md:flex-1
         hover:border-[var(--iv-border-medium)]
         ${isSpeaking ? "iv-speaking-glow" : ""}
       `}
@@ -189,33 +193,77 @@ export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps)
         </span>
       </div>
 
-      {/* Blob Canvas */}
-      <div className="w-full h-full relative flex items-center justify-center overflow-hidden">
+      {/* Blob Canvas — smooth scale pulse when speaking */}
+      <motion.div
+        className="w-full h-full relative flex items-center justify-center overflow-hidden"
+        animate={
+          isSpeaking
+            ? {
+                scale: [1, 1.04, 0.98, 1.03, 1],
+              }
+            : { scale: 1 }
+        }
+        transition={
+          isSpeaking
+            ? {
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+            : {
+                duration: 0.6,
+                ease: "easeOut",
+              }
+        }
+      >
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-      </div>
+      </motion.div>
 
-      {/* Thinking Indicator */}
-      {isThinking && (
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] bg-black/50 backdrop-blur-[12px] border border-white/8 z-5">
-          <div className="flex gap-1">
-            <span
-              className="w-1 h-1 rounded-full iv-thinking-dot"
-              style={{ background: "hsl(var(--iv-accent))" }}
-            />
-            <span
-              className="w-1 h-1 rounded-full iv-thinking-dot-2"
-              style={{ background: "hsl(var(--iv-accent))" }}
-            />
-            <span
-              className="w-1 h-1 rounded-full iv-thinking-dot-3"
-              style={{ background: "hsl(var(--iv-accent))" }}
-            />
-          </div>
-          <span className="text-xs" style={{ color: "var(--iv-text-secondary)" }}>
-            Thinking...
-          </span>
-        </div>
-      )}
+      {/* Speaking indicator label */}
+      <motion.div
+        className="absolute bottom-5 left-1/2 flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] bg-black/50 backdrop-blur-[12px] border border-white/8 z-5"
+        style={{ x: "-50%" }}
+        initial={false}
+        animate={{
+          opacity: isSpeaking || isThinking ? 1 : 0,
+          y: isSpeaking || isThinking ? 0 : 8,
+        }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+      >
+        {isThinking ? (
+          <>
+            <div className="flex gap-1">
+              <span
+                className="w-1 h-1 rounded-full iv-thinking-dot"
+                style={{ background: "hsl(var(--iv-accent))" }}
+              />
+              <span
+                className="w-1 h-1 rounded-full iv-thinking-dot-2"
+                style={{ background: "hsl(var(--iv-accent))" }}
+              />
+              <span
+                className="w-1 h-1 rounded-full iv-thinking-dot-3"
+                style={{ background: "hsl(var(--iv-accent))" }}
+              />
+            </div>
+            <span className="text-xs" style={{ color: "var(--iv-text-secondary)" }}>
+              Thinking...
+            </span>
+          </>
+        ) : isSpeaking ? (
+          <>
+            <div className="flex items-center gap-[3px]">
+              <span className="iv-speaking-bar" style={{ animationDelay: "0s" }} />
+              <span className="iv-speaking-bar" style={{ animationDelay: "0.15s" }} />
+              <span className="iv-speaking-bar" style={{ animationDelay: "0.3s" }} />
+              <span className="iv-speaking-bar" style={{ animationDelay: "0.45s" }} />
+            </div>
+            <span className="text-xs" style={{ color: "var(--iv-text-secondary)" }}>
+              Speaking...
+            </span>
+          </>
+        ) : null}
+      </motion.div>
     </div>
   );
 }

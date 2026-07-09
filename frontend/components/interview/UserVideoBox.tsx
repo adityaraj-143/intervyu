@@ -43,18 +43,18 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
     }
   }, [isMuted]);
 
-  // Attach stream to video element
+  // Attach stream to video element — always keep it attached, just hide visually
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (stream && !isCameraOff) {
+    if (stream) {
       video.srcObject = stream;
       video.play().catch(() => {});
     } else {
       video.srcObject = null;
     }
-  }, [stream, isCameraOff]);
+  }, [stream]);
 
   // Web Speech API for subtitles
   const startRecognition = useCallback(() => {
@@ -144,7 +144,7 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
 
   return (
     <div
-      className="relative rounded-[20px] overflow-hidden border transition-[border-color] duration-400 ease-in-out flex-[0.8] flex items-center justify-center max-md:flex-1 hover:border-[var(--iv-border-medium)]"
+      className="relative rounded-[20px] overflow-hidden border transition-[border-color] duration-400 ease-in-out flex-[1.15] flex items-center justify-center max-md:flex-1 hover:border-[var(--iv-border-medium)]"
       style={{
         background: "var(--iv-surface-2)",
         borderColor: "var(--iv-border-subtle)",
@@ -165,16 +165,20 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
         </span>
       </div>
 
-      {/* Video / Camera Off */}
-      {!isCameraOff && stream ? (
-        <video
-          ref={videoRef}
-          className="w-full h-full object-cover -scale-x-100"
-          autoPlay
-          playsInline
-          muted
-        />
-      ) : (
+      {/* Video — always rendered, hidden when camera is off */}
+      <video
+        ref={videoRef}
+        className="w-full h-full object-cover -scale-x-100"
+        autoPlay
+        playsInline
+        muted
+        style={{
+          display: isCameraOff || !stream ? "none" : "block",
+        }}
+      />
+
+      {/* Camera Off Placeholder */}
+      {(isCameraOff || !stream) && (
         <div className="flex flex-col items-center justify-center w-full h-full" style={{ background: "var(--iv-surface-2)" }}>
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center"

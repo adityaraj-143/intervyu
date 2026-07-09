@@ -357,7 +357,15 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
   // ── Mute toggle ────────────────────────────────────────────────────
 
   const handleToggleMute = useCallback(() => {
-    setIsMuted((prev) => !prev);
+    setIsMuted((prev) => {
+      const next = !prev;
+      // Toggle the actual hardware audio track so the OS stops capturing
+      const audioTrack = audioStreamRef.current?.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !next;
+      }
+      return next;
+    });
   }, []);
 
   // ── End interview ──────────────────────────────────────────────────
@@ -436,6 +444,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
           stream={mediaStream}
           isCameraOff={isCameraOff}
           isMuted={isMuted}
+          key="user-video"
         />
       </motion.div>
 

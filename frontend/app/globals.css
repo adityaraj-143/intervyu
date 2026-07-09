@@ -336,6 +336,27 @@
               0 0 60px rgba(var(--iv-accent-rgb), 0.04);
 }
 
+/* Speaking bars — audio visualizer effect */
+.iv-speaking-bar {
+  display: inline-block;
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+  background: hsl(var(--iv-accent));
+  animation: iv-speaking-bar-bounce 0.8s ease-in-out infinite;
+}
+
+@keyframes iv-speaking-bar-bounce {
+  0%, 100% {
+    height: 4px;
+    opacity: 0.4;
+  }
+  50% {
+    height: 12px;
+    opacity: 1;
+  }
+}
+
 /* ── Utility Classes ─────────────────────────────────────────────── */
 
 .iv-glass {
