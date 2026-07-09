@@ -6,10 +6,34 @@ import { TtsSession } from "./tts.service";
 const BOUNDARY_REGEX = /[.,!?;:]/;
 const FLUSH_TIMEOUT_MS = 3000;
 
-export async function callLLM(conversation: Conversation, socket: Socket, systemPrompt: string, voiceId: string): Promise<string> {
+// ── Timer thresholds (minutes) ──────────────────────────────────────
+const WRAP_UP_MINUTES = 8;
+const HARD_STOP_MINUTES = 10;
+
+export interface LLMResult {
+  response: string;
+  shouldEnd: boolean;
+}
+
+export async function callLLM(conversation: Conversation, socket: Socket, systemPrompt: string, voiceId: string, createdAt: Date): Promise<LLMResult> {
   console.log("[LLM] Starting Groq stream...");
   const groq = new Groq();
-  const stream = await getGroqChatStream(groq, conversation, systemPrompt);
+
+  // ── Compute elapsed time and determine time nudge ───────────────────
+  const elapsedMinutes = (Date.now() - createdAt.getTime()) / (1000 * 60);
+  let timeNote: string | null = null;
+  let shouldEnd = false;
+
+  if (elapsedMinutes >= HARD_STOP_MINUTES) {
+    timeNote = "System note: The interview time is completely up. Conclude the interview immediately and thank the candidate for their time.";
+    shouldEnd = true;
+    console.log(`[LLM] Hard stop — elapsed ${elapsedMinutes.toFixed(1)} min`);
+  } else if (elapsedMinutes >= WRAP_UP_MINUTES) {
+    timeNote = "System note: There are only 2 minutes left in this interview. Wrap up your current line of questioning, ask the candidate if they have any questions for you, and prepare to conclude.";
+    console.log(`[LLM] Wrap-up nudge — elapsed ${elapsedMinutes.toFixed(1)} min`);
+  }
+
+  const stream = await getGroqChatStream(groq, conversation, systemPrompt, timeNote);
   console.log("[LLM] Groq stream opened, connecting TTS...");
 
   const tts = await TtsSession.create(socket, voiceId);
@@ -76,21 +100,28 @@ export async function callLLM(conversation: Conversation, socket: Socket, system
     console.log("[LLM] Done");
   }
 
-  return fullResponse.trim();
+  return { response: fullResponse.trim(), shouldEnd };
 }
 
-export async function getGroqChatStream(groq: Groq, conversation: Conversation, systemPrompt: string) {
+export async function getGroqChatStream(groq: Groq, conversation: Conversation, systemPrompt: string, timeNote: string | null = null) {
+  const messages: { role: "system" | "user"; content: string }[] = [
+    {
+      role: "system",
+      content: systemPrompt,
+    },
+    {
+      role: "user",
+      content: conversation.messages.map((msg) => `${msg.sender}: ${msg.content}`).join("\n"),
+    },
+  ];
+
+  // Inject time-awareness nudge as a trailing system message
+  if (timeNote) {
+    messages.push({ role: "system", content: timeNote });
+  }
+
   return groq.chat.completions.create({
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: conversation.messages.map((msg) => `${msg.sender}: ${msg.content}`).join("\n"),
-      },
-    ],
+    messages,
 
     // The language model which will generate the completion.
     model: "llama-3.3-70b-versatile",

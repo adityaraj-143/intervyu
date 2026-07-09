@@ -1,12 +1,21 @@
 "use client";
 
 import { BACKEND_URL } from "@/config";
-import { use, useEffect, useRef, useState, useCallback } from "react";
+import { use, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { io } from "socket.io-client";
 import { motion } from "framer-motion";
 import AIVideoBox from "@/components/interview/AIVideoBox";
 import UserVideoBox from "@/components/interview/UserVideoBox";
 import MediaControls from "@/components/interview/MediaControls";
+
+// ── Timer thresholds (seconds) ──────────────────────────────────────
+const WARN_SECONDS = 8 * 60;   // 8 minutes — amber warning
+const DANGER_SECONDS = 10 * 60; // 10 minutes — red danger
+const FALLBACK_SECONDS = 11 * 60; // 11 minutes — frontend force-end
+
+// Set to true to preview the UI without connecting to the backend or using AI credits.
+// Flip back to false when ready to run real interviews.
+const DEMO_MODE = true;
 
 export default function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: interviewId } = use(params);
@@ -50,6 +59,25 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
     const s = (seconds % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
   };
+
+  // Derive timer visual state
+  const timerState = useMemo(() => {
+    if (elapsed >= DANGER_SECONDS) return "danger" as const;
+    if (elapsed >= WARN_SECONDS) return "warn" as const;
+    return "normal" as const;
+  }, [elapsed]);
+
+  const timerDotColor = timerState === "danger"
+    ? "#ef4444"
+    : timerState === "warn"
+      ? "#f59e0b"
+      : "#ef4444"; // default red recording dot
+
+  const timerTextColor = timerState === "danger"
+    ? "#ef4444"
+    : timerState === "warn"
+      ? "#f59e0b"
+      : "var(--iv-text-secondary)";
 
   // ── Audio helpers ──────────────────────────────────────────────────
 
@@ -184,6 +212,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
   // ── Initialize video + socket ──────────────────────────────────────
 
   useEffect(() => {
+    if (DEMO_MODE) return; // Skip all socket/audio setup in demo mode
     mountedRef.current = true;
 
     // Get video stream (separate from audio — video stays alive the whole session)
@@ -271,6 +300,21 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
       startRecording(socket);
     });
 
+    // Listen for backend-driven interview end (time expired)
+    socket.on("interviewEnded", ({ reason }: { reason: string }) => {
+      console.log(`[interview] Interview ended by backend: ${reason}`);
+      mountedRef.current = false;
+      stopMic();
+      audioStreamRef.current?.getTracks().forEach((t) => t.stop());
+      audioStreamRef.current = null;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      socket.disconnect();
+      ttsCtxRef.current?.close();
+      ttsCtxRef.current = null;
+      window.location.href = "/";
+    });
+
     return () => {
       mountedRef.current = false;
       stopMic();
@@ -286,6 +330,16 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Frontend fallback: force-end if backend hasn't ended by 11 min ──
+  useEffect(() => {
+    if (DEMO_MODE) return;
+    if (elapsed >= FALLBACK_SECONDS && mountedRef.current) {
+      console.log("[interview] Frontend fallback: forcing end at 11 min");
+      socketRef.current?.emit("forceEndInterview");
+      // The interviewEnded listener will handle cleanup & redirect
+    }
+  }, [elapsed]);
 
   // ── Camera toggle ──────────────────────────────────────────────────
 
@@ -342,11 +396,28 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
             intervyu
           </span>
         </div>
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] border border-white/6 bg-white/4">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-[iv-glow-pulse_1.5s_ease-in-out_infinite]" />
+        <div
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] border transition-all duration-500"
+          style={{
+            borderColor: timerState === "danger"
+              ? "rgba(239, 68, 68, 0.3)"
+              : timerState === "warn"
+                ? "rgba(245, 158, 11, 0.25)"
+                : "rgba(255, 255, 255, 0.06)",
+            background: timerState === "danger"
+              ? "rgba(239, 68, 68, 0.1)"
+              : timerState === "warn"
+                ? "rgba(245, 158, 11, 0.08)"
+                : "rgba(255, 255, 255, 0.04)",
+          }}
+        >
           <span
-            className="text-[0.8125rem] font-medium tracking-wider tabular-nums"
-            style={{ color: "var(--iv-text-secondary)" }}
+            className="w-1.5 h-1.5 rounded-full animate-[iv-glow-pulse_1.5s_ease-in-out_infinite] transition-colors duration-500"
+            style={{ backgroundColor: timerDotColor }}
+          />
+          <span
+            className="text-[0.8125rem] font-medium tracking-wider tabular-nums transition-colors duration-500"
+            style={{ color: timerTextColor }}
           >
             {formatTime(elapsed)}
           </span>

@@ -3,7 +3,7 @@ import type { SpeechClient } from "@google-cloud/speech";
 import { Conversation } from "../utils/conversation";
 import { callLLM } from "../services/llm.service";
 import { db } from "../db";
-import { MessageRole } from "../generated/prisma/enums";
+import { MessageRole, InterviewStatus } from "../generated/prisma/enums";
 
 export function registerSocketHandlers(
   socket: Socket,
@@ -14,6 +14,8 @@ export function registerSocketHandlers(
   let interviewId: string | null = null;
   let systemPrompt: string | null = null;
   let voiceId: string | null = null;
+  let createdAt: Date | null = null;
+  let interviewEnded = false;
 
   let sampleRate = 48000; // updated by sttConfig event from frontend
   let fullMessage = "";
@@ -29,7 +31,8 @@ export function registerSocketHandlers(
       interviewId = interview.id;
       systemPrompt = interview.systemPrompt;
       voiceId = interview.voiceId;
-      console.log(`[socket] Joined interview ${interviewId}`);
+      createdAt = interview.createdAt;
+      console.log(`[socket] Joined interview ${interviewId} (created at ${createdAt.toISOString()})`);
     } catch {
       console.error(`[socket] Interview ${id} not found`);
       socket.emit("error", { message: "Interview not found" });
@@ -72,8 +75,8 @@ export function registerSocketHandlers(
   }
 
   async function runLLMTurn() {
-    if (!systemPrompt) {
-      console.warn("[socket] No systemPrompt — joinInterview not received yet.");
+    if (!systemPrompt || !createdAt) {
+      console.warn("[socket] No systemPrompt/createdAt — joinInterview not received yet.");
       socket.emit("readyForAnswer");
       return;
     }
@@ -89,7 +92,7 @@ export function registerSocketHandlers(
       recognizeStream = null;
     }
 
-    const llmResponse = await callLLM(conversation, socket, systemPrompt, voiceId || "JBFqnCBsd6RMkjVDRZzb");
+    const { response: llmResponse, shouldEnd } = await callLLM(conversation, socket, systemPrompt, voiceId || "JBFqnCBsd6RMkjVDRZzb", createdAt);
 
     // Persist both sides to DB
     if (interviewId) {
@@ -99,20 +102,34 @@ export function registerSocketHandlers(
           { interviewId, role: MessageRole.Interviewer, content: llmResponse },
         ],
       });
+
+      // If the LLM turn hit the hard stop, complete the interview
+      if (shouldEnd) {
+        interviewEnded = true;
+        await db.interview.update({
+          where: { id: interviewId },
+          data: { status: InterviewStatus.Completed },
+        });
+        console.log(`[socket] Interview ${interviewId} completed (time expired)`);
+        socket.emit("interviewEnded", { reason: "time_expired" });
+        return; // Don't emit readyForAnswer
+      }
     }
   }
 
   function resetSilenceTimer() {
     if (silenceTimer) clearTimeout(silenceTimer);
     silenceTimer = setTimeout(async () => {
-      if (!fullMessage || isProcessing) return;
+      if (!fullMessage || isProcessing || interviewEnded) return;
       isProcessing = true;
 
       console.log("Final transcript:", fullMessage);
       await runLLMTurn();
 
       isProcessing = false;
-      socket.emit("readyForAnswer");
+      if (!interviewEnded) {
+        socket.emit("readyForAnswer");
+      }
     }, 3500);
   }
 
@@ -124,6 +141,7 @@ export function registerSocketHandlers(
   }
 
   socket.on("audioChunk", (chunk: Buffer) => {
+    if (interviewEnded) return;
     startRecognizeStream();
     if (!recognizeStream) return;
     recognizeStream.write(chunk);
@@ -140,6 +158,7 @@ export function registerSocketHandlers(
   });
 
   socket.on("answerDone", async () => {
+    if (interviewEnded) return;
     clearSilenceTimer();
     if (isProcessing) return;
     isProcessing = true;
@@ -161,6 +180,28 @@ export function registerSocketHandlers(
     await runLLMTurn();
 
     isProcessing = false;
-    socket.emit("readyForAnswer"); // tell frontend to start recording again
+    if (!interviewEnded) {
+      socket.emit("readyForAnswer"); // tell frontend to start recording again
+    }
+  });
+
+  // ── Force-end fallback (triggered by frontend if backend didn't end in time)
+  socket.on("forceEndInterview", async () => {
+    if (interviewEnded || !interviewId) return;
+    interviewEnded = true;
+    console.log(`[socket] Force-ending interview ${interviewId}`);
+
+    clearSilenceTimer();
+    if (recognizeStream) {
+      recognizeStream.destroy();
+      recognizeStream = null;
+    }
+
+    await db.interview.update({
+      where: { id: interviewId },
+      data: { status: InterviewStatus.Completed },
+    });
+
+    socket.emit("interviewEnded", { reason: "force_ended" });
   });
 }
