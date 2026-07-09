@@ -287,7 +287,6 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
         activeSources--;
         if (activeSources <= 0) {
           activeSources = 0;
-          setIsTTSPlaying(false);
         }
       };
     });
