@@ -15,7 +15,7 @@ const FALLBACK_SECONDS = 11 * 60; // 11 minutes — frontend force-end
 
 // Set to true to preview the UI without connecting to the backend or using AI credits.
 // Flip back to false when ready to run real interviews.
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 
 export default function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: interviewId } = use(params);
@@ -328,7 +328,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
       ttsCtxRef.current?.close();
       ttsCtxRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Frontend fallback: force-end if backend hasn't ended by 11 min ──

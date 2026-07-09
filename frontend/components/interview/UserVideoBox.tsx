@@ -43,18 +43,18 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
     }
   }, [isMuted]);
 
-  // Attach stream to video element — always keep it attached, just hide visually
+  // Attach stream to video element
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (stream) {
+    if (stream && !isCameraOff) {
       video.srcObject = stream;
       video.play().catch(() => {});
     } else {
       video.srcObject = null;
     }
-  }, [stream]);
+  }, [stream, isCameraOff]);
 
   // Web Speech API for subtitles
   const startRecognition = useCallback(() => {
@@ -165,20 +165,16 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
         </span>
       </div>
 
-      {/* Video — always rendered, hidden when camera is off */}
-      <video
-        ref={videoRef}
-        className="w-full h-full object-cover -scale-x-100"
-        autoPlay
-        playsInline
-        muted
-        style={{
-          display: isCameraOff || !stream ? "none" : "block",
-        }}
-      />
-
-      {/* Camera Off Placeholder */}
-      {(isCameraOff || !stream) && (
+      {/* Video / Camera Off */}
+      {!isCameraOff && stream ? (
+        <video
+          ref={videoRef}
+          className="w-full h-full object-cover -scale-x-100"
+          autoPlay
+          playsInline
+          muted
+        />
+      ) : (
         <div className="flex flex-col items-center justify-center w-full h-full" style={{ background: "var(--iv-surface-2)" }}>
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center"
