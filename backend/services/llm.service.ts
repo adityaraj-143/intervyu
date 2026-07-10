@@ -6,9 +6,9 @@ import { TtsSession } from "./tts.service";
 const BOUNDARY_REGEX = /[.,!?;:]/;
 const FLUSH_TIMEOUT_MS = 3000;
 
-// ── Timer thresholds (minutes) ──────────────────────────────────────
-const WRAP_UP_MINUTES = 8;
-const HARD_STOP_MINUTES = 10;
+// ── Timer thresholds (seconds) ──────────────────────────────────────
+const WRAP_UP_SECONDS = 20;
+const HARD_STOP_SECONDS = 40;
 
 export interface LLMResult {
   response: string;
@@ -20,17 +20,17 @@ export async function callLLM(conversation: Conversation, socket: Socket, system
   const groq = new Groq();
 
   // ── Compute elapsed time and determine time nudge ───────────────────
-  const elapsedMinutes = (Date.now() - createdAt.getTime()) / (1000 * 60);
+  const elapsedSeconds = (Date.now() - createdAt.getTime()) / 1000;
   let timeNote: string | null = null;
   let shouldEnd = false;
 
-  if (elapsedMinutes >= HARD_STOP_MINUTES) {
+  if (elapsedSeconds >= HARD_STOP_SECONDS) {
     timeNote = "System note: The interview time is completely up. Conclude the interview immediately and thank the candidate for their time.";
     shouldEnd = true;
-    console.log(`[LLM] Hard stop — elapsed ${elapsedMinutes.toFixed(1)} min`);
-  } else if (elapsedMinutes >= WRAP_UP_MINUTES) {
-    timeNote = "System note: There are only 2 minutes left in this interview. Wrap up your current line of questioning, ask the candidate if they have any questions for you, and prepare to conclude.";
-    console.log(`[LLM] Wrap-up nudge — elapsed ${elapsedMinutes.toFixed(1)} min`);
+    console.log(`[LLM] Hard stop — elapsed ${elapsedSeconds.toFixed(1)} sec`);
+  } else if (elapsedSeconds >= WRAP_UP_SECONDS) {
+    timeNote = "System note: There are only 20 seconds left in this interview. Wrap up your current line of questioning, ask the candidate if they have any questions for you, and prepare to conclude.";
+    console.log(`[LLM] Wrap-up nudge — elapsed ${elapsedSeconds.toFixed(1)} sec`);
   }
 
   const stream = await getGroqChatStream(groq, conversation, systemPrompt, timeNote);

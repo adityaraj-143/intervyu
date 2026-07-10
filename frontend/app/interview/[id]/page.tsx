@@ -9,9 +9,9 @@ import UserVideoBox from "@/components/interview/UserVideoBox";
 import MediaControls from "@/components/interview/MediaControls";
 
 // ── Timer thresholds (seconds) ──────────────────────────────────────
-const WARN_SECONDS = 8 * 60;   // 8 minutes — amber warning
-const DANGER_SECONDS = 10 * 60; // 10 minutes — red danger
-const FALLBACK_SECONDS = 11 * 60; // 11 minutes — frontend force-end
+const WARN_SECONDS = 20;   // 20 seconds — amber warning
+const DANGER_SECONDS = 40; // 40 seconds — red danger
+const FALLBACK_SECONDS = 45; // 45 seconds — frontend force-end
 
 // Set to true to preview the UI without connecting to the backend or using AI credits.
 // Flip back to false when ready to run real interviews.
