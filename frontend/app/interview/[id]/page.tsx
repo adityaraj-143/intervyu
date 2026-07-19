@@ -540,7 +540,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
       socket.disconnect();
       ttsCtxRef.current?.close();
       ttsCtxRef.current = null;
-      window.location.href = "/";
+      window.location.href = `/interview/${interviewId}/report`;
     });
 
     return () => {
@@ -606,7 +606,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
     socketRef.current?.disconnect();
     ttsCtxRef.current?.close();
     ttsCtxRef.current = null;
-    window.location.href = "/";
+    window.location.href = `/interview/${interviewId}/report`;
   }, []);
 
   // ── Render ─────────────────────────────────────────────────────────
