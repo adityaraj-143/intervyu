@@ -172,7 +172,7 @@ export function registerSocketHandlers(
           data: { status: InterviewStatus.Completed },
         });
         console.log(`[socket] Interview ${interviewId} completed (time expired)`);
-        socket.emit("interviewEnded", { reason: "time_expired" });
+        socket.emit("interviewEnded", { reason: "time_expired", interviewId });
         return; // Don't emit readyForAnswer
       }
     }
@@ -344,6 +344,6 @@ export function registerSocketHandlers(
       data: { status: InterviewStatus.Completed },
     });
 
-    socket.emit("interviewEnded", { reason: "force_ended" });
+    socket.emit("interviewEnded", { reason: "force_ended", interviewId });
   });
 }

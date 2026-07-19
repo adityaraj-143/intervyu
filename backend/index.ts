@@ -10,6 +10,7 @@ import { createSpeechClient } from "./services/speech.service";
 import { registerSocketHandlers } from "./handlers/socket.handler";
 import { handleInterviewStart } from "./controllers/interview.controller";
 import authRoutes from './routes/auth.routes';
+import interviewRoutes from './routes/interview.routes';
 import { authenticateJWT } from "./middlewares/auth.middleware";
 
 const app = express();
@@ -53,6 +54,7 @@ app.post(
 );
 
 app.use('/api/v1/auth/', authRoutes)
+app.use('/api/v1/interview', interviewRoutes)
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
