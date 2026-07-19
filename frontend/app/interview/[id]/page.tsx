@@ -13,9 +13,25 @@ const WARN_SECONDS = 20;   // 20 seconds — amber warning
 const DANGER_SECONDS = 40; // 40 seconds — red danger
 const FALLBACK_SECONDS = 45; // 45 seconds — frontend force-end
 
+// ── VAD & Turn Detection Constants ──────────────────────────────────
+const VAD_POLL_MS = 100;              // Poll interval for VAD (100ms)
+const SILENCE_THRESHOLD = 5;          // Min avg amplitude to count as speech
+const BARGE_IN_THRESHOLD = 8;         // Higher threshold during AI playback (avoid mic bleed)
+const DEFAULT_SILENCE_MS = 3500;      // Default: 3.5s for EASY questions
+const MEDIUM_SILENCE_MS = 5000;       // 5s for MEDIUM questions
+const HARD_SILENCE_MS = 7000;         // 7s for HARD questions
+const SPECULATIVE_TRIGGER_MS = 2500;  // Trigger speculative processing at 2.5s
+const FILLER_MAX_DURATION_MS = 700;   // Max duration of a filler word burst
+const FILLER_EXTENSION_MS = 1000;     // Each filler adds 1s
+const HARD_CAP_MS = 9000;            // Absolute max silence before AI acts
+const GRACE_PERIOD_MS = 1000;         // Default grace period after speculative trigger
+
 // Set to true to preview the UI without connecting to the backend or using AI credits.
 // Flip back to false when ready to run real interviews.
 const DEMO_MODE = false;
+
+// ── VAD State Machine ────────────────────────────────────────────────
+type VadMode = "turn_detection" | "grace_period" | "barge_in" | "idle";
 
 export default function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: interviewId } = use(params);
@@ -32,6 +48,24 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
   const scheduledStopRef = useRef(0);
   const mountedRef = useRef(true);
   const isMutedRef = useRef(false);
+
+  // ── Smart Turn Detection refs ──────────────────────────────────────
+  const vadModeRef = useRef<VadMode>("idle");
+  const silenceThresholdRef = useRef(DEFAULT_SILENCE_MS);
+  const silenceStartRef = useRef<number | null>(null);
+  const speculativeSentRef = useRef(false);
+  const gracePeriodEndRef = useRef(0);
+  const fillerExtensionRef = useRef(0);
+  const totalSilenceStartRef = useRef<number | null>(null);
+  const hardCapSentRef = useRef(false);
+
+  // ── Filler word detection refs ─────────────────────────────────────
+  const speechBurstStartRef = useRef<number | null>(null);
+  const isBurstActiveRef = useRef(false);
+
+  // ── Barge-in refs ──────────────────────────────────────────────────
+  const ttsSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const isTTSPlayingRef = useRef(false);
 
   // UI State
   const [isMuted, setIsMuted] = useState(false);
@@ -101,11 +135,37 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
     micCtxRef.current = null;
   }
 
+  /** Stop all currently playing TTS audio sources */
+  function stopTTSPlayback() {
+    for (const src of ttsSourcesRef.current) {
+      try { src.stop(); } catch { /* already stopped */ }
+    }
+    ttsSourcesRef.current = [];
+    scheduledStopRef.current = 0;
+    setIsTTSPlaying(false);
+    isTTSPlayingRef.current = false;
+  }
+
+  /** Reset all speculative/silence state for a fresh turn */
+  function resetTurnDetectionState() {
+    silenceStartRef.current = null;
+    speculativeSentRef.current = false;
+    gracePeriodEndRef.current = 0;
+    fillerExtensionRef.current = 0;
+    totalSilenceStartRef.current = null;
+    hardCapSentRef.current = false;
+    speechBurstStartRef.current = null;
+    isBurstActiveRef.current = false;
+    // Reset difficulty to default for next question
+    silenceThresholdRef.current = DEFAULT_SILENCE_MS;
+  }
+
   const done = useCallback(() => {
     if (answerDoneRef.current) return;
     ensureTtsCtx();
     answerDoneRef.current = true;
     setIsThinking(true);
+    vadModeRef.current = "idle";
     processorRef.current?.disconnect();
     if (vadIntervalRef.current) {
       clearInterval(vadIntervalRef.current);
@@ -118,6 +178,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
 
   function startRecording(socket: ReturnType<typeof io>) {
     stopMic();
+    resetTurnDetectionState();
 
     navigator.mediaDevices
       .getUserMedia({
@@ -149,9 +210,9 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
         const dataArray = new Uint8Array(bufferLength);
 
         let isSpeaking = false;
-        let silenceFrames = 0;
-        const SILENCE_THRESHOLD = 5;
-        const MAX_SILENCE_FRAMES = 25; // ~2.5s
+
+        // ── Set initial VAD mode ──────────────────────────────────────
+        vadModeRef.current = "turn_detection";
 
         const vadInterval = window.setInterval(() => {
           if (!mountedRef.current) {
@@ -167,21 +228,163 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
           }
           const avg = sum / bufferLength;
 
-          if (avg > SILENCE_THRESHOLD) {
-            if (!isSpeaking) console.log("[VAD] User started speaking");
-            isSpeaking = true;
-            silenceFrames = 0;
-          } else if (isSpeaking) {
-            silenceFrames++;
-            if (silenceFrames >= MAX_SILENCE_FRAMES) {
-              console.log("[VAD] User stopped speaking. Auto-triggering done.");
-              isSpeaking = false;
-              silenceFrames = 0;
-              done();
+          const mode = vadModeRef.current;
+          const now = Date.now();
+
+          // ═══════════════════════════════════════════════════════════
+          // MODE: TURN DETECTION — listening for end-of-speech
+          // ═══════════════════════════════════════════════════════════
+          if (mode === "turn_detection") {
+            if (avg > SILENCE_THRESHOLD) {
+              // ── User is speaking ────────────────────────────────
+              if (!isSpeaking) console.log("[VAD] User started speaking");
+              isSpeaking = true;
+              silenceStartRef.current = null;
+              totalSilenceStartRef.current = null;
+              hardCapSentRef.current = false;
+              fillerExtensionRef.current = 0;
+              speculativeSentRef.current = false;
+
+              // Cancel any pending speculative processing
+              if (speculativeSentRef.current) {
+                socketRef.current?.emit("speculativeCancel");
+                speculativeSentRef.current = false;
+              }
+            } else if (isSpeaking) {
+              // ── Silence detected after speech ───────────────────
+              if (!silenceStartRef.current) {
+                silenceStartRef.current = now;
+                totalSilenceStartRef.current = now;
+              }
+
+              const silenceDuration = now - silenceStartRef.current;
+              const totalSilence = now - (totalSilenceStartRef.current || now);
+
+              // ── Hard cap check (9s absolute max) ────────────────
+              if (totalSilence >= HARD_CAP_MS && !hardCapSentRef.current) {
+                console.log("[VAD] Hard cap reached (9s). Triggering done.");
+                hardCapSentRef.current = true;
+                socketRef.current?.emit("hardCapReached");
+                // Trigger speculative start if not already started
+                if (!speculativeSentRef.current) {
+                  console.log("[VAD] Hard cap → speculative start");
+                  speculativeSentRef.current = true;
+                  socketRef.current?.emit("speculativeStart");
+                  vadModeRef.current = "idle"; // Go idle, wait for readyForAnswer
+                  isSpeaking = false;
+                }
+                return;
+              }
+
+              // ── Speculative trigger at 2.5s ─────────────────────
+              const effectiveThreshold = silenceThresholdRef.current + fillerExtensionRef.current;
+              if (silenceDuration >= SPECULATIVE_TRIGGER_MS && !speculativeSentRef.current) {
+                console.log("[VAD] Speculative trigger at 2.5s — starting LLM processing");
+                speculativeSentRef.current = true;
+                socketRef.current?.emit("speculativeStart");
+
+                // Enter grace period
+                vadModeRef.current = "grace_period";
+                const graceDuration = Math.min(
+                  effectiveThreshold - SPECULATIVE_TRIGGER_MS,
+                  HARD_CAP_MS - (totalSilence)
+                );
+                gracePeriodEndRef.current = now + Math.max(graceDuration, GRACE_PERIOD_MS);
+                console.log(`[VAD] Grace period: ${graceDuration}ms`);
+                return;
+              }
+
+              // ── Full threshold reached without speculative ──────
+              // (Fallback: if for some reason speculative didn't fire)
+              if (silenceDuration >= effectiveThreshold && !speculativeSentRef.current) {
+                console.log("[VAD] Full silence threshold reached. Triggering done.");
+                isSpeaking = false;
+                silenceStartRef.current = null;
+                done();
+                return;
+              }
+            }
+          }
+          // ═══════════════════════════════════════════════════════════
+          // MODE: GRACE PERIOD — speculative already fired, waiting
+          // ═══════════════════════════════════════════════════════════
+          else if (mode === "grace_period") {
+            if (avg > SILENCE_THRESHOLD) {
+              // ── Check if this is a filler word (short burst) ────
+              if (!isBurstActiveRef.current) {
+                // Start tracking a potential filler burst
+                speechBurstStartRef.current = now;
+                isBurstActiveRef.current = true;
+              }
+
+              // If the speech continues longer than FILLER_MAX_DURATION,
+              // this is real speech, not a filler → cancel speculation
+              if (isBurstActiveRef.current && speechBurstStartRef.current) {
+                const burstDuration = now - speechBurstStartRef.current;
+                if (burstDuration > FILLER_MAX_DURATION_MS) {
+                  // Real speech — cancel speculative processing
+                  console.log("[VAD] Real speech detected during grace period — cancelling");
+                  socketRef.current?.emit("speculativeCancel");
+                  speculativeSentRef.current = false;
+                  isBurstActiveRef.current = false;
+                  speechBurstStartRef.current = null;
+                  isSpeaking = true;
+                  silenceStartRef.current = null;
+                  vadModeRef.current = "turn_detection";
+                  return;
+                }
+              }
+            } else {
+              // ── Silence in grace period ─────────────────────────
+              if (isBurstActiveRef.current && speechBurstStartRef.current) {
+                // Short burst just ended — it's a filler word!
+                const burstDuration = now - speechBurstStartRef.current;
+                if (burstDuration > 0 && burstDuration <= FILLER_MAX_DURATION_MS) {
+                  console.log(`[VAD] Filler word detected (${burstDuration}ms) — extending grace by ${FILLER_EXTENSION_MS}ms`);
+                  fillerExtensionRef.current += FILLER_EXTENSION_MS;
+                  gracePeriodEndRef.current += FILLER_EXTENSION_MS;
+
+                  // Check if extending would exceed hard cap
+                  const totalSilence = now - (totalSilenceStartRef.current || now);
+                  if (totalSilence + FILLER_EXTENSION_MS >= HARD_CAP_MS) {
+                    gracePeriodEndRef.current = now; // Close grace immediately
+                  }
+                }
+                isBurstActiveRef.current = false;
+                speechBurstStartRef.current = null;
+              }
+
+              // ── Check if grace period has expired ───────────────
+              if (now >= gracePeriodEndRef.current) {
+                console.log("[VAD] Grace period expired — committing to AI response");
+                vadModeRef.current = "idle";
+                isSpeaking = false;
+                // The backend is already generating — just let it complete
+                // and wait for readyForAnswer
+                return;
+              }
+            }
+          }
+          // ═══════════════════════════════════════════════════════════
+          // MODE: BARGE-IN — AI is speaking, monitoring for user speech
+          // ═══════════════════════════════════════════════════════════
+          else if (mode === "barge_in") {
+            if (avg > BARGE_IN_THRESHOLD) {
+              console.log("[VAD] Barge-in detected! User is speaking over AI");
+              vadModeRef.current = "idle";
+
+              // Stop TTS playback
+              stopTTSPlayback();
+
+              // Tell backend to abort LLM/TTS
+              socketRef.current?.emit("bargeIn");
+
+              // The backend will send `readyForAnswer` after handling the barge-in
               return;
             }
           }
-        }, 100);
+          // MODE: IDLE — waiting for backend, do nothing
+        }, VAD_POLL_MS);
         vadIntervalRef.current = vadInterval;
 
         const processor = micCtx.createScriptProcessor(4096, 1, 1);
@@ -243,6 +446,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
 
     let activeSources = 0;
 
+    // ── TTS Audio handler ────────────────────────────────────────────
     socket.on("ttsAudio", (data: unknown) => {
       setIsThinking(false);
 
@@ -280,15 +484,39 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
       source.connect(ctx.destination);
       source.start(when);
 
+      // Track for barge-in cancellation
+      ttsSourcesRef.current.push(source);
+
       activeSources++;
       setIsTTSPlaying(true);
+      isTTSPlayingRef.current = true;
+
+      // Enter barge-in mode when TTS starts playing
+      if (vadModeRef.current !== "barge_in" && vadModeRef.current !== "grace_period") {
+        vadModeRef.current = "barge_in";
+      }
 
       source.onended = () => {
         activeSources--;
+        // Remove from tracked sources
+        ttsSourcesRef.current = ttsSourcesRef.current.filter((s) => s !== source);
         if (activeSources <= 0) {
           activeSources = 0;
         }
       };
+    });
+
+    // ── TTS Stop handler (barge-in from backend) ─────────────────────
+    socket.on("ttsStop", () => {
+      console.log("[interview] ttsStop received — stopping TTS playback");
+      stopTTSPlayback();
+    });
+
+    // ── Difficulty timer handler ─────────────────────────────────────
+    socket.on("setDifficultyTimer", ({ difficulty }: { difficulty: "MEDIUM" | "HARD" }) => {
+      const newThreshold = difficulty === "HARD" ? HARD_SILENCE_MS : MEDIUM_SILENCE_MS;
+      console.log(`[interview] Difficulty set to ${difficulty} — silence threshold: ${newThreshold}ms`);
+      silenceThresholdRef.current = newThreshold;
     });
 
     socket.on("readyForAnswer", () => {
@@ -296,6 +524,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
       answerDoneRef.current = false;
       setIsThinking(false);
       setIsTTSPlaying(false);
+      isTTSPlayingRef.current = false;
       startRecording(socket);
     });
 

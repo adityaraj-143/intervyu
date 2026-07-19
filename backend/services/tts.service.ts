@@ -7,6 +7,10 @@ export class TtsSession {
   private ws: WebSocket;
   private speakResolve: (() => void) | null = null;
   private flushTimeout: ReturnType<typeof setTimeout> | null = null;
+  private _aborted = false;
+
+  /** True after abort() has been called — no further audio will be emitted. */
+  get aborted() { return this._aborted; }
 
   private constructor(socket: Socket, ws: WebSocket) {
     this.socket = socket;
@@ -63,7 +67,7 @@ export class TtsSession {
       try {
         const data = JSON.parse(typeof event.data === "string" ? event.data : "");
 
-        if (data.audio) {
+        if (data.audio && !session._aborted) {
           // ElevenLabs sends base64-encoded PCM chunks
           const buf = Buffer.from(data.audio, "base64");
           if (buf.length > 0) {
@@ -107,6 +111,11 @@ export class TtsSession {
   async speak(text: string): Promise<void> {
     console.log(`[TTS] speak, readyState: ${this.ws.readyState}`);
 
+    if (this._aborted) {
+      console.warn("[TTS] aborted, skipping speak");
+      return;
+    }
+
     if (this.ws.readyState !== WebSocket.OPEN) {
       console.warn("[TTS] socket not open, skipping");
       return;
@@ -117,6 +126,32 @@ export class TtsSession {
       text: text + " ",
       try_trigger_generation: true,
     }));
+  }
+
+  /**
+   * Immediately abort the TTS session.
+   * - Closes the ElevenLabs WS (stops audio generation)
+   * - Emits `ttsStop` so the frontend stops playback
+   * - Prevents any further audio chunks from being emitted
+   */
+  abort(): void {
+    if (this._aborted) return;
+    this._aborted = true;
+    console.log("[TTS] Aborting session");
+
+    this.socket.emit("ttsStop");
+
+    if (this.flushTimeout) {
+      clearTimeout(this.flushTimeout);
+      this.flushTimeout = null;
+    }
+    if (this.speakResolve) {
+      this.speakResolve();
+      this.speakResolve = null;
+    }
+    if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+      this.ws.close();
+    }
   }
 
   async close(): Promise<void> {
