@@ -4,6 +4,7 @@ import { db } from "../db";
 import { PDFParse } from "pdf-parse";
 import { summarizeJD, summarizeResume } from "../services/summarize.service";
 import { buildSystemPrompt } from "../utils/buildSystemPrompt";
+import { savePdf } from "../services/storage.service";
 
 export async function handleInterviewStart(req: Request, res: Response): Promise<void> {
   const { githubUsername, jobDescriptionText, interviewType: rawType, voiceId } = req.body;
@@ -109,4 +110,32 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
   });
 
   res.status(200).json({ interviewId: interview.id });
+
+  // ── Save PDFs to storage (fire-and-forget, non-blocking) ────────────
+  (async () => {
+    try {
+      let resumeUrl: string | null = null;
+      let jdUrl: string | null = null;
+
+      if (resumePdfFile?.buffer) {
+        resumeUrl = await savePdf(interview.id, "resume", resumePdfFile.buffer);
+      }
+      if (jdPdfFile?.buffer) {
+        jdUrl = await savePdf(interview.id, "jd", jdPdfFile.buffer);
+      }
+
+      if (resumeUrl || jdUrl) {
+        await db.interview.update({
+          where: { id: interview.id },
+          data: {
+            ...(resumeUrl && { resumeUrl }),
+            ...(jdUrl && { jdUrl }),
+          },
+        });
+        console.log(`[interview] PDFs saved for ${interview.id}`);
+      }
+    } catch (err) {
+      console.error(`[interview] Failed to save PDFs for ${interview.id}:`, err);
+    }
+  })();
 }
