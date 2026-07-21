@@ -6,8 +6,12 @@ import {
   handleGetTranscript,
   handleServePdf,
 } from "../controllers/report.controller";
+import { handleListInterviews } from "../controllers/interview.controller";
 
 const router = express.Router();
+
+// List all interviews for the authenticated user
+router.get("/", authenticateJWT, handleListInterviews);
 
 // Report generation & retrieval
 router.post("/:id/report", authenticateJWT, handleGenerateReport);

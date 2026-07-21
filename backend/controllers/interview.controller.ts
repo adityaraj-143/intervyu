@@ -6,6 +6,53 @@ import { summarizeJD, summarizeResume } from "../services/summarize.service";
 import { buildSystemPrompt } from "../utils/buildSystemPrompt";
 import { savePdf } from "../services/storage.service";
 
+/**
+ * GET /api/v1/interview
+ * Lists all interviews for the authenticated user, ordered by most recent first.
+ */
+export async function handleListInterviews(req: Request, res: Response): Promise<void> {
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const interviews = await db.interview.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        interviewType: true,
+        status: true,
+        score: true,
+        report: true,
+        createdAt: true,
+      },
+    });
+
+    // Return lightweight report data (summary + categories only)
+    const result = interviews.map((iv) => {
+      const report = iv.report as Record<string, unknown> | null;
+      return {
+        id: iv.id,
+        interviewType: iv.interviewType,
+        status: iv.status,
+        score: iv.score,
+        createdAt: iv.createdAt,
+        reportSummary: report?.summary ?? null,
+        reportCategories: report?.categories ?? null,
+      };
+    });
+
+    res.status(200).json({ interviews: result });
+  } catch (err) {
+    console.error("[Interview] List error:", err);
+    res.status(500).json({ error: "Failed to list interviews" });
+  }
+}
+
 export async function handleInterviewStart(req: Request, res: Response): Promise<void> {
   const { githubUsername, jobDescriptionText, interviewType: rawType, voiceId } = req.body;
   const userId = req.user?.userId;

@@ -263,6 +263,14 @@ export async function getGroqChatStream(
     messages.push({ role: "system", content: struggleNote });
   }
 
+  // First turn: nudge the model to open as an interviewer, not a generic assistant
+  if (conversation.messages.length <= 2) {
+    messages.push({
+      role: "system",
+      content: "This is the very start of the interview. The candidate has just joined the call. Greet them briefly as an interviewer.",
+    });
+  }
+
   return groq.chat.completions.create({
     messages,
 

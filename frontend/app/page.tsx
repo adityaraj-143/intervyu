@@ -117,7 +117,7 @@ export default function Home() {
                 {user.name}
               </span>
               <a
-                href="/setup"
+                href="/dashboard"
                 className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
                 style={{
                   fontSize: "0.8125rem",

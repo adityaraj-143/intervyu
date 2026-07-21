@@ -66,6 +66,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
   // ── Barge-in refs ──────────────────────────────────────────────────
   const ttsSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const isTTSPlayingRef = useRef(false);
+  const thinkingStartRef = useRef(0);
 
   // UI State
   const [isMuted, setIsMuted] = useState(false);
@@ -165,6 +166,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
     ensureTtsCtx();
     answerDoneRef.current = true;
     setIsThinking(true);
+    thinkingStartRef.current = Date.now();
     vadModeRef.current = "idle";
     processorRef.current?.disconnect();
     if (vadIntervalRef.current) {
@@ -448,7 +450,14 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
 
     // ── TTS Audio handler ────────────────────────────────────────────
     socket.on("ttsAudio", (data: unknown) => {
-      setIsThinking(false);
+      // Ensure thinking indicator shows for at least 800ms before transitioning to speaking
+      const thinkingElapsed = Date.now() - thinkingStartRef.current;
+      const minThinkingMs = 800;
+      if (thinkingElapsed >= minThinkingMs) {
+        setIsThinking(false);
+      } else {
+        setTimeout(() => setIsThinking(false), minThinkingMs - thinkingElapsed);
+      }
 
       const ctx = ttsCtxRef.current;
       if (!ctx || ctx.state === "closed") return;
@@ -502,6 +511,8 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
         ttsSourcesRef.current = ttsSourcesRef.current.filter((s) => s !== source);
         if (activeSources <= 0) {
           activeSources = 0;
+          setIsTTSPlaying(false);
+          isTTSPlayingRef.current = false;
         }
       };
     });
