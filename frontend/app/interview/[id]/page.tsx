@@ -623,7 +623,7 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
   // ── Render ─────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden font-sans" style={{ background: "var(--iv-surface-1)" }}>
+    <div className="fixed inset-0 flex flex-col overflow-hidden font-sans iv-mesh-bg iv-noise" style={{ background: "var(--iv-surface-0)" }}>
       {/* Header */}
       <motion.div
         className="flex items-center justify-between px-6 py-4 z-10"

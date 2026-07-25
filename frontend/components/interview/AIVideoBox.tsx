@@ -29,8 +29,8 @@ export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps)
 
     // Background subtle radial gradient
     const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.7);
-    bgGrad.addColorStop(0, "rgba(82, 102, 255, 0.04)");
-    bgGrad.addColorStop(0.5, "rgba(82, 102, 255, 0.01)");
+    bgGrad.addColorStop(0, "rgba(99, 102, 241, 0.05)");
+    bgGrad.addColorStop(0.5, "rgba(99, 102, 241, 0.015)");
     bgGrad.addColorStop(1, "transparent");
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
@@ -40,11 +40,11 @@ export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps)
 
     // Draw multiple layered blobs
     const layers = [
-      { radius: baseRadius * 1.6 * speakScale, alpha: 0.03, color: "120, 140, 255", speed: 0.3 * speakSpeed, lobes: 5, amp: 0.15 },
-      { radius: baseRadius * 1.3 * speakScale, alpha: 0.06, color: "100, 120, 255", speed: 0.5 * speakSpeed, lobes: 4, amp: 0.12 },
-      { radius: baseRadius * 1.05 * speakScale, alpha: 0.1, color: "82, 102, 255", speed: 0.7 * speakSpeed, lobes: 6, amp: 0.1 },
-      { radius: baseRadius * 0.85 * speakScale, alpha: 0.15, color: "100, 130, 255", speed: 0.9 * speakSpeed, lobes: 5, amp: 0.08 },
-      { radius: baseRadius * 0.6 * speakScale, alpha: 0.2, color: "140, 160, 255", speed: 1.1 * speakSpeed, lobes: 7, amp: 0.06 },
+      { radius: baseRadius * 1.6 * speakScale, alpha: 0.03, color: "129, 140, 248", speed: 0.3 * speakSpeed, lobes: 5, amp: 0.15 },
+      { radius: baseRadius * 1.3 * speakScale, alpha: 0.06, color: "110, 120, 245", speed: 0.5 * speakSpeed, lobes: 4, amp: 0.12 },
+      { radius: baseRadius * 1.05 * speakScale, alpha: 0.1, color: "99, 102, 241", speed: 0.7 * speakSpeed, lobes: 6, amp: 0.1 },
+      { radius: baseRadius * 0.85 * speakScale, alpha: 0.15, color: "139, 92, 246", speed: 0.9 * speakSpeed, lobes: 5, amp: 0.08 },
+      { radius: baseRadius * 0.6 * speakScale, alpha: 0.2, color: "168, 85, 247", speed: 1.1 * speakSpeed, lobes: 7, amp: 0.06 },
     ];
 
     for (const layer of layers) {
@@ -83,9 +83,9 @@ export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps)
 
     // Central bright core
     const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseRadius * 0.35 * speakScale);
-    coreGrad.addColorStop(0, "rgba(180, 195, 255, 0.35)");
-    coreGrad.addColorStop(0.5, "rgba(120, 140, 255, 0.15)");
-    coreGrad.addColorStop(1, "rgba(82, 102, 255, 0)");
+    coreGrad.addColorStop(0, "rgba(199, 210, 254, 0.35)");
+    coreGrad.addColorStop(0.5, "rgba(129, 140, 248, 0.15)");
+    coreGrad.addColorStop(1, "rgba(99, 102, 241, 0)");
     ctx.fillStyle = coreGrad;
     ctx.beginPath();
     ctx.arc(cx, cy, baseRadius * 0.35 * speakScale, 0, Math.PI * 2);
@@ -95,8 +95,8 @@ export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps)
     if (speaking) {
       const ringAlpha = 0.08 + Math.sin(time * 0.003) * 0.04;
       const ringGrad = ctx.createRadialGradient(cx, cy, baseRadius * 1.4, cx, cy, baseRadius * 2.2);
-      ringGrad.addColorStop(0, `rgba(82, 102, 255, ${ringAlpha})`);
-      ringGrad.addColorStop(1, "rgba(82, 102, 255, 0)");
+      ringGrad.addColorStop(0, `rgba(99, 102, 241, ${ringAlpha})`);
+      ringGrad.addColorStop(1, "rgba(99, 102, 241, 0)");
       ctx.fillStyle = ringGrad;
       ctx.beginPath();
       ctx.arc(cx, cy, baseRadius * 2.2, 0, Math.PI * 2);
@@ -114,7 +114,7 @@ export default function AIVideoBox({ isSpeaking, isThinking }: AIVideoBlobProps)
       
       ctx.beginPath();
       ctx.arc(px, py, pSize, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(140, 160, 255, ${pAlpha})`;
+      ctx.fillStyle = `rgba(168, 85, 247, ${pAlpha})`;
       ctx.fill();
     }
   }, []);

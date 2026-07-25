@@ -382,25 +382,32 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div
-      className="min-h-screen font-sans"
+      className="min-h-screen font-sans iv-mesh-bg iv-noise"
       style={{ background: "var(--iv-surface-0)", color: "var(--iv-text-primary)" }}
     >
       {/* Header */}
       <motion.nav
-        className="flex items-center justify-between px-6 md:px-10 py-5"
-        style={{ borderBottom: "1px solid var(--iv-border-subtle)" }}
+        className="iv-nav"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
         <a href="/" className="flex items-center gap-2 no-underline" style={{ color: "var(--iv-text-primary)" }}>
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
-            style={{ background: "hsl(var(--iv-accent))", color: "#fff" }}
+            className="rounded-lg flex items-center justify-center"
+            style={{
+              width: 28,
+              height: 28,
+              background: "rgba(var(--iv-accent-rgb), 0.1)",
+              border: "1px solid rgba(var(--iv-accent-rgb), 0.15)",
+            }}
           >
-            iv
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="4" width="12" height="8" rx="2" stroke="hsl(var(--iv-accent))" strokeWidth="1.2"/>
+              <path d="M4 4V3a3 3 0 016 0v1" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
           </div>
-          <span className="text-sm font-semibold tracking-wide">intervyu</span>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 500 }}>intervyu</span>
         </a>
         <div className="flex items-center gap-3">
           {interviewMeta.interviewType && (
@@ -533,9 +540,9 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
           <div className="flex items-center gap-2 mb-4">
             <div
               className="w-6 h-6 rounded-md flex items-center justify-center"
-              style={{ background: "rgba(82, 102, 255, 0.15)" }}
+              style={{ background: "rgba(var(--iv-accent-rgb), 0.15)" }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(230, 100%, 66%)" strokeWidth="2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--iv-accent))" strokeWidth="2.5">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 8v4l3 3" />
               </svg>
@@ -557,8 +564,8 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
                 <span
                   className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5"
                   style={{
-                    background: "rgba(82, 102, 255, 0.15)",
-                    color: "hsl(230, 100%, 66%)",
+                    background: "rgba(var(--iv-accent-rgb), 0.15)",
+                    color: "hsl(var(--iv-accent))",
                   }}
                 >
                   {i + 1}
@@ -625,10 +632,10 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
                           style={{
                             background: isInterviewer
                               ? "rgba(148, 163, 204, 0.06)"
-                              : "rgba(82, 102, 255, 0.08)",
+                              : "rgba(var(--iv-accent-rgb), 0.08)",
                             border: `1px solid ${isInterviewer
                               ? "rgba(148, 163, 204, 0.08)"
-                              : "rgba(82, 102, 255, 0.12)"
+                              : "rgba(var(--iv-accent-rgb), 0.12)"
                             }`,
                           }}
                         >
@@ -637,7 +644,7 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
                             style={{
                               color: isInterviewer
                                 ? "var(--iv-text-tertiary)"
-                                : "hsl(230, 100%, 66%)",
+                                : "hsl(var(--iv-accent))",
                             }}
                           >
                             {isInterviewer ? "Interviewer" : "You"}
