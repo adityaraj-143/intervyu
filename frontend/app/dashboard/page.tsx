@@ -159,8 +159,8 @@ function InterviewCard({
       transition={{ duration: 0.4, delay: 0.1 + index * 0.06, ease: [0.4, 0, 0.2, 1] }}
       whileHover={{
         y: -4,
-        borderColor: "rgba(82, 102, 255, 0.2)",
-        boxShadow: "0 8px 32px rgba(82, 102, 255, 0.08)",
+        borderColor: "rgba(var(--iv-accent-rgb), 0.2)",
+        boxShadow: "0 8px 32px rgba(var(--iv-accent-rgb), 0.08)",
       }}
       onClick={() => {
         if (isCompleted) {
@@ -188,7 +188,7 @@ function InterviewCard({
               style={{
                 background:
                   interview.interviewType === "Technical"
-                    ? "rgba(82, 102, 255, 0.1)"
+                    ? "rgba(var(--iv-accent-rgb), 0.1)"
                     : "rgba(168, 85, 247, 0.1)",
                 color:
                   interview.interviewType === "Technical"
@@ -196,7 +196,7 @@ function InterviewCard({
                     : "hsl(270, 70%, 65%)",
                 border: `1px solid ${
                   interview.interviewType === "Technical"
-                    ? "rgba(82, 102, 255, 0.15)"
+                    ? "rgba(var(--iv-accent-rgb), 0.15)"
                     : "rgba(168, 85, 247, 0.15)"
                 }`,
               }}
@@ -392,7 +392,7 @@ function StatsBar({ interviews }: { interviews: DashboardInterview[] }) {
         >
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "rgba(82, 102, 255, 0.06)" }}
+            style={{ background: "rgba(var(--iv-accent-rgb), 0.06)" }}
           >
             {stat.icon}
           </div>
@@ -420,16 +420,17 @@ function EmptyState() {
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center py-20"
+      className="flex flex-col items-center justify-center py-24"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
     >
       <div
-        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
+        className="w-24 h-24 rounded-2xl flex items-center justify-center mb-7"
         style={{
-          background: "rgba(82, 102, 255, 0.06)",
-          border: "1px solid rgba(82, 102, 255, 0.1)",
+          animation: "iv-float 6s ease-in-out infinite",
+          background: "rgba(var(--iv-accent-rgb), 0.06)",
+          border: "1px solid rgba(var(--iv-accent-rgb), 0.1)",
         }}
       >
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -544,15 +545,15 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="min-h-screen flex flex-col iv-mesh-bg iv-noise"
       style={{ background: "var(--iv-surface-0)" }}
     >
       {/* ── Navbar ──────────────────────────────────────────────────── */}
       <nav
         className="sticky top-0 z-50 flex items-center justify-between px-6 py-3"
         style={{
-          background: "rgba(8, 9, 14, 0.85)",
-          backdropFilter: "blur(16px) saturate(1.6)",
+          background: "rgba(15, 17, 23, 0.8)",
+          backdropFilter: "blur(20px) saturate(1.4)",
           borderBottom: "1px solid var(--iv-border-subtle)",
         }}
       >
@@ -563,8 +564,8 @@ export default function DashboardPage() {
           <div
             className="w-7 h-7 rounded-md flex items-center justify-center"
             style={{
-              background: "rgba(82, 102, 255, 0.1)",
-              border: "1px solid rgba(82, 102, 255, 0.15)",
+              background: "rgba(var(--iv-accent-rgb), 0.1)",
+              border: "1px solid rgba(var(--iv-accent-rgb), 0.15)",
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -589,17 +590,17 @@ export default function DashboardPage() {
                   fontSize: "0.8125rem",
                   fontWeight: 500,
                   color: "#fff",
-                  background: "rgba(82, 102, 255, 0.15)",
-                  border: "1px solid rgba(82, 102, 255, 0.25)",
+                  background: "rgba(var(--iv-accent-rgb), 0.15)",
+                  border: "1px solid rgba(var(--iv-accent-rgb), 0.25)",
                   cursor: "pointer",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.25)";
-                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.4)";
+                  e.currentTarget.style.background = "rgba(var(--iv-accent-rgb), 0.25)";
+                  e.currentTarget.style.borderColor = "rgba(var(--iv-accent-rgb), 0.4)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.15)";
-                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.25)";
+                  e.currentTarget.style.background = "rgba(var(--iv-accent-rgb), 0.15)";
+                  e.currentTarget.style.borderColor = "rgba(var(--iv-accent-rgb), 0.25)";
                 }}
               >
                 New Interview
@@ -679,12 +680,12 @@ export default function DashboardPage() {
                   onClick={() => setFilter(f)}
                   className="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
                   style={{
-                    background: filter === f ? "rgba(82, 102, 255, 0.12)" : "transparent",
+                    background: filter === f ? "rgba(var(--iv-accent-rgb), 0.12)" : "transparent",
                     color:
                       filter === f ? "hsl(var(--iv-accent))" : "var(--iv-text-tertiary)",
                     border:
                       filter === f
-                        ? "1px solid rgba(82, 102, 255, 0.15)"
+                        ? "1px solid rgba(var(--iv-accent-rgb), 0.15)"
                         : "1px solid transparent",
                     cursor: "pointer",
                   }}

@@ -98,10 +98,7 @@ export default function SetupPage() {
       }}
     >
       {/* Top bar */}
-      <nav
-        className="flex items-center justify-between px-6 md:px-10 py-4"
-        style={{ borderBottom: "1px solid var(--iv-border-subtle)" }}
-      >
+      <nav className="iv-nav">
         <a
           href="/"
           className="flex items-center gap-2 no-underline"
@@ -112,8 +109,8 @@ export default function SetupPage() {
             style={{
               width: 28,
               height: 28,
-              background: "rgba(82, 102, 255, 0.1)",
-              border: "1px solid rgba(82, 102, 255, 0.15)",
+              background: "rgba(var(--iv-accent-rgb), 0.1)",
+              border: "1px solid rgba(var(--iv-accent-rgb), 0.15)",
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -195,10 +192,10 @@ export default function SetupPage() {
                     style={{
                       padding: "16px",
                       background: isTechnical
-                        ? "rgba(82, 102, 255, 0.06)"
+                        ? "rgba(var(--iv-accent-rgb), 0.06)"
                         : "var(--iv-surface-2)",
                       border: isTechnical
-                        ? "1.5px solid rgba(82, 102, 255, 0.35)"
+                        ? "1.5px solid rgba(var(--iv-accent-rgb), 0.35)"
                         : "1.5px solid var(--iv-border-subtle)",
                       cursor: "pointer",
                       outline: "none",
@@ -254,10 +251,10 @@ export default function SetupPage() {
                     style={{
                       padding: "16px",
                       background: !isTechnical
-                        ? "rgba(82, 102, 255, 0.06)"
+                        ? "rgba(var(--iv-accent-rgb), 0.06)"
                         : "var(--iv-surface-2)",
                       border: !isTechnical
-                        ? "1.5px solid rgba(82, 102, 255, 0.35)"
+                        ? "1.5px solid rgba(var(--iv-accent-rgb), 0.35)"
                         : "1.5px solid var(--iv-border-subtle)",
                       cursor: "pointer",
                       outline: "none",
@@ -354,7 +351,7 @@ export default function SetupPage() {
                           transition: "border-color 0.2s ease",
                         }}
                         onFocus={(e) => {
-                          e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.3)";
+                          e.currentTarget.style.borderColor = "rgba(var(--iv-accent-rgb), 0.3)";
                         }}
                         onBlur={(e) => {
                           e.currentTarget.style.borderColor = "var(--iv-border-subtle)";
@@ -424,7 +421,7 @@ export default function SetupPage() {
                     style={{
                       fontSize: "0.8125rem",
                       fontWeight: 500,
-                      background: jdMode === "text" ? "rgba(82, 102, 255, 0.1)" : "transparent",
+                      background: jdMode === "text" ? "rgba(var(--iv-accent-rgb), 0.1)" : "transparent",
                       color: jdMode === "text" ? "hsl(var(--iv-accent))" : "var(--iv-text-tertiary)",
                       border: "none",
                       cursor: "pointer",
@@ -441,7 +438,7 @@ export default function SetupPage() {
                     style={{
                       fontSize: "0.8125rem",
                       fontWeight: 500,
-                      background: jdMode === "pdf" ? "rgba(82, 102, 255, 0.1)" : "transparent",
+                      background: jdMode === "pdf" ? "rgba(var(--iv-accent-rgb), 0.1)" : "transparent",
                       color: jdMode === "pdf" ? "hsl(var(--iv-accent))" : "var(--iv-text-tertiary)",
                       border: "none",
                       cursor: "pointer",
@@ -482,7 +479,7 @@ export default function SetupPage() {
                           lineHeight: 1.6,
                         }}
                         onFocus={(e) => {
-                          e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.3)";
+                          e.currentTarget.style.borderColor = "rgba(var(--iv-accent-rgb), 0.3)";
                         }}
                         onBlur={(e) => {
                           e.currentTarget.style.borderColor = "var(--iv-border-subtle)";
@@ -622,7 +619,7 @@ export default function SetupPage() {
 
         {/* ── Right: Visual context ──────────────────────────────────── */}
         <motion.aside
-          className="hidden lg:flex flex-col items-center flex-1 relative"
+          className="hidden lg:flex flex-col items-center flex-1 relative iv-mesh-bg overflow-hidden"
           style={{
             background: "var(--iv-surface-1)",
             borderLeft: "1px solid var(--iv-border-subtle)",
@@ -642,7 +639,7 @@ export default function SetupPage() {
                     style={{
                       width: 24,
                       height: 24,
-                      background: "rgba(82, 102, 255, 0.1)",
+                      background: "rgba(var(--iv-accent-rgb), 0.1)",
                       color: "hsl(var(--iv-accent))",
                       fontSize: "0.75rem",
                       fontWeight: 600,

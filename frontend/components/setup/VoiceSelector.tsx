@@ -95,9 +95,9 @@ export default function VoiceSelector({ selected, onSelect }: VoiceSelectorProps
             style={{
               padding: "16px 14px",
               borderRadius: 14,
-              background: isActive ? "rgba(82, 102, 255, 0.06)" : "var(--iv-surface-2)",
+              background: isActive ? "rgba(var(--iv-accent-rgb), 0.06)" : "var(--iv-surface-2)",
               border: `1px solid ${
-                isActive ? "rgba(82, 102, 255, 0.3)" : "var(--iv-border-subtle)"
+                isActive ? "rgba(var(--iv-accent-rgb), 0.3)" : "var(--iv-border-subtle)"
               }`,
               cursor: "pointer",
               transition: "all 0.3s ease",
@@ -140,7 +140,7 @@ export default function VoiceSelector({ selected, onSelect }: VoiceSelectorProps
                   width: 8,
                   height: 8,
                   background: "hsl(var(--iv-accent))",
-                  boxShadow: "0 0 8px rgba(82, 102, 255, 0.4)",
+                  boxShadow: "0 0 8px rgba(var(--iv-accent-rgb), 0.4)",
                 }}
                 transition={{ type: "spring", damping: 20, stiffness: 300 }}
               />
