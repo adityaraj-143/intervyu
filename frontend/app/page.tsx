@@ -59,6 +59,7 @@ const features = [
 export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     getMe()
@@ -73,6 +74,12 @@ export default function Home() {
       });
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const handleLogout = async () => {
     await logoutUser();
     setUser(null);
@@ -80,16 +87,22 @@ export default function Home() {
 
   return (
     <main
+      className="iv-noise"
       style={{
         background: "var(--iv-surface-0)",
         color: "var(--iv-text-primary)",
         overflow: "hidden",
       }}
     >
-      {/* ── Top Nav ────────────────────────────────────────────────── */}
+      {/* ── Sticky Nav ─────────────────────────────────────────────── */}
       <nav
-        className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 md:px-10 py-4"
-        style={{ zIndex: 20 }}
+        className="fixed top-0 left-0 right-0 flex items-center justify-between px-6 md:px-10 py-3 transition-all duration-300"
+        style={{
+          zIndex: 50,
+          background: scrolled ? "rgba(15, 17, 23, 0.8)" : "transparent",
+          backdropFilter: scrolled ? "blur(20px) saturate(1.4)" : "none",
+          borderBottom: scrolled ? "1px solid var(--iv-border-subtle)" : "1px solid transparent",
+        }}
       >
         <div className="flex items-center gap-2">
           <div
@@ -97,8 +110,8 @@ export default function Home() {
             style={{
               width: 28,
               height: 28,
-              background: "rgba(82, 102, 255, 0.1)",
-              border: "1px solid rgba(82, 102, 255, 0.15)",
+              background: "rgba(var(--iv-accent-rgb), 0.1)",
+              border: "1px solid rgba(var(--iv-accent-rgb), 0.15)",
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -118,28 +131,20 @@ export default function Home() {
               </span>
               <a
                 href="/dashboard"
-                className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200 hover:brightness-125"
                 style={{
                   fontSize: "0.8125rem",
                   fontWeight: 500,
                   color: "#fff",
-                  background: "rgba(82, 102, 255, 0.15)",
-                  border: "1px solid rgba(82, 102, 255, 0.25)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.25)";
-                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.15)";
-                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.25)";
+                  background: "rgba(var(--iv-accent-rgb), 0.15)",
+                  border: "1px solid rgba(var(--iv-accent-rgb), 0.25)",
                 }}
               >
                 Dashboard
               </a>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 rounded-lg transition-all duration-200"
+                className="px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/5"
                 style={{
                   fontSize: "0.8125rem",
                   fontWeight: 500,
@@ -147,14 +152,6 @@ export default function Home() {
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "var(--iv-text-primary)";
-                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "var(--iv-text-secondary)";
-                  e.currentTarget.style.background = "transparent";
                 }}
               >
                 Sign Out
@@ -164,41 +161,25 @@ export default function Home() {
             <>
               <a
                 href="/login"
-                className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/5"
                 style={{
                   fontSize: "0.8125rem",
                   fontWeight: 500,
                   color: "var(--iv-text-secondary)",
                   background: "transparent",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "var(--iv-text-primary)";
-                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "var(--iv-text-secondary)";
-                  e.currentTarget.style.background = "transparent";
-                }}
               >
                 Sign In
               </a>
               <a
                 href="/signup"
-                className="no-underline px-4 py-2 rounded-lg transition-all duration-200"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200 hover:brightness-125"
                 style={{
                   fontSize: "0.8125rem",
                   fontWeight: 500,
                   color: "#fff",
-                  background: "rgba(82, 102, 255, 0.15)",
-                  border: "1px solid rgba(82, 102, 255, 0.25)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.25)";
-                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(82, 102, 255, 0.15)";
-                  e.currentTarget.style.borderColor = "rgba(82, 102, 255, 0.25)";
+                  background: "rgba(var(--iv-accent-rgb), 0.15)",
+                  border: "1px solid rgba(var(--iv-accent-rgb), 0.25)",
                 }}
               >
                 Sign Up
@@ -265,11 +246,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Section 2: Pipeline Visualization ────────────────────────── */}
+      {/* ── Section 2: How It Works ──────────────────────────────────── */}
       <section className="iv-section" id="how-it-works">
         <div className="iv-container">
           <motion.div
-            className="text-center mb-16"
+            className="text-center mb-14"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -291,7 +272,7 @@ export default function Home() {
       <section className="iv-section" id="features">
         <div className="iv-container">
           <motion.div
-            className="text-center mb-16"
+            className="text-center mb-14"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -323,7 +304,7 @@ export default function Home() {
       <section className="iv-section" id="analytics">
         <div className="iv-container">
           <motion.div
-            className="text-center mb-16"
+            className="text-center mb-14"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -343,33 +324,11 @@ export default function Home() {
         <div className="iv-divider" />
       </div>
 
-      {/* ── Section 5: Roles Supported ───────────────────────────────── */}
-      <section className="iv-section-sm" id="roles">
+      {/* ── Section 5: Why Intervyu + Roles ──────────────────────────── */}
+      <section className="iv-section" id="why">
         <div className="iv-container">
           <motion.div
-            className="text-center mb-10"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="iv-label mb-3">Roles</p>
-            <h2 className="iv-heading-md">Prepared for every engineering role</h2>
-          </motion.div>
-
-          <RolesMarquee />
-        </div>
-      </section>
-
-      <div className="iv-container">
-        <div className="iv-divider" />
-      </div>
-
-      {/* ── Section 6: Testimonials ──────────────────────────────────── */}
-      <section className="iv-section" id="testimonials">
-        <div className="iv-container">
-          <motion.div
-            className="text-center mb-16"
+            className="text-center mb-14"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -380,6 +339,18 @@ export default function Home() {
           </motion.div>
 
           <Testimonials />
+
+          {/* Roles marquee integrated here */}
+          <motion.div
+            className="mt-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6 }}
+          >
+            <p className="iv-label text-center mb-6">Prepared for every engineering role</p>
+            <RolesMarquee />
+          </motion.div>
         </div>
       </section>
 
@@ -387,7 +358,7 @@ export default function Home() {
         <div className="iv-divider" />
       </div>
 
-      {/* ── Section 7: Final CTA ─────────────────────────────────────── */}
+      {/* ── Section 6: Final CTA ─────────────────────────────────────── */}
       <section className="iv-section" id="cta">
         <div className="iv-container text-center">
           <motion.div
@@ -425,8 +396,8 @@ export default function Home() {
       <footer
         className="iv-container"
         style={{
-          paddingTop: 32,
-          paddingBottom: 32,
+          paddingTop: 24,
+          paddingBottom: 24,
           borderTop: "1px solid var(--iv-border-subtle)",
         }}
       >
@@ -437,8 +408,8 @@ export default function Home() {
               style={{
                 width: 28,
                 height: 28,
-                background: "rgba(82, 102, 255, 0.1)",
-                border: "1px solid rgba(82, 102, 255, 0.15)",
+                background: "rgba(var(--iv-accent-rgb), 0.1)",
+                border: "1px solid rgba(var(--iv-accent-rgb), 0.15)",
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

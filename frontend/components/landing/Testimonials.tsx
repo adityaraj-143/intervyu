@@ -6,29 +6,31 @@ const valueProps = [
   {
     title: "No scheduling needed",
     description:
-      "Practice anytime, skip the awkward ask. No need to find a friend, mentor, or pay for a human mock interviewer. Just open the app and start.",
+      "Practice anytime. No need to find a mentor or pay for a human mock interviewer. Just open the app and start.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5"/>
         <path d="M10 6v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
+    accent: { bg: "rgba(99, 102, 241, 0.08)", border: "rgba(99, 102, 241, 0.12)", color: "#6366f1" },
   },
   {
     title: "Questions from your actual code",
     description:
-      "We analyze your public GitHub repositories and resume to craft questions about technologies you actually use — not generic trivia.",
+      "We analyze your public GitHub repos and resume to craft questions about technologies you actually use.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M7 7l-4 3 4 3M13 7l4 3-4 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         <path d="M11 5l-2 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
+    accent: { bg: "rgba(168, 85, 247, 0.08)", border: "rgba(168, 85, 247, 0.12)", color: "#a855f7" },
   },
   {
     title: "Feels like a real interview",
     description:
-      "Voice-based conversation with natural pauses, adaptive follow-ups, and an AI that listens and responds like a senior engineer would.",
+      "Voice-based conversation with natural pauses, adaptive follow-ups, and an AI that listens like a senior engineer.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.5"/>
@@ -36,6 +38,7 @@ const valueProps = [
         <path d="M10 16v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
+    accent: { bg: "rgba(59, 130, 246, 0.08)", border: "rgba(59, 130, 246, 0.12)", color: "#3b82f6" },
   },
 ];
 
@@ -46,7 +49,7 @@ export default function Testimonials() {
         <motion.div
           key={v.title}
           className="iv-card iv-animated-border group"
-          style={{ padding: "32px 28px" }}
+          style={{ padding: "28px 24px" }}
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
@@ -62,9 +65,9 @@ export default function Testimonials() {
             style={{
               width: 44,
               height: 44,
-              background: "rgba(82, 102, 255, 0.08)",
-              border: "1px solid rgba(82, 102, 255, 0.12)",
-              color: "hsl(var(--iv-accent))",
+              background: v.accent.bg,
+              border: `1px solid ${v.accent.border}`,
+              color: v.accent.color,
               transition: "all 0.3s ease",
             }}
           >
