@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { db } from "../db";
 import { generateReport } from "../services/report.service";
 import { MessageRole } from "../generated/prisma/enums";
-import { getPdfAbsolutePath, pdfExists } from "../services/storage.service";
+import { getPdfUrl, pdfExists } from "../services/storage.service";
 
 /**
  * POST /api/v1/interview/:id/report
@@ -218,12 +218,8 @@ export async function handleServePdf(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const filePath = getPdfAbsolutePath(id, type);
-    const filename = type === "resume" ? "resume.pdf" : "job-description.pdf";
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-    res.sendFile(filePath);
+    const presignedUrl = await getPdfUrl(id, type);
+    res.redirect(presignedUrl);
   } catch (err) {
     console.error("[Report] PDF serve error:", err);
     res.status(500).json({ error: "Failed to serve PDF" });
