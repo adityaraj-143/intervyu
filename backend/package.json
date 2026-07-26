@@ -7,6 +7,7 @@
     "dev": "bun --watch index.ts"
   },
   "devDependencies": {
+    "@types/cookie": "^1.0.0",
     "@types/pg": "^8.20.0",
     "bun-types": "latest",
     "prisma": "^7.8.0"
@@ -29,6 +30,7 @@
     "@types/pdf-parse": "^1.1.5",
     "axios": "^1.18.1",
     "bcrypt": "^6.0.0",
+    "cookie": "^2.0.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",

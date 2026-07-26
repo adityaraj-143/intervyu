@@ -47,11 +47,22 @@ export function registerSocketHandlers(
   socket.on("joinInterview", async ({ interviewId: id }: { interviewId: string }) => {
     try {
       const interview = await db.interview.findUniqueOrThrow({ where: { id } });
+
+      // ── IDOR Protection Check ──────────────────────────────────────
+      // Ensure the authenticated user owns this interview session.
+      const currentUser = socket.data.user;
+      if (!currentUser || interview.userId !== currentUser.id) {
+        console.warn(`[socket] Unauthorized attempt to join interview ${id} by user ${currentUser?.id}`);
+        socket.emit("error", { message: "Unauthorized access to this interview session" });
+        socket.disconnect();
+        return;
+      }
+
       interviewId = interview.id;
       systemPrompt = interview.systemPrompt;
       voiceId = interview.voiceId;
       createdAt = interview.createdAt;
-      console.log(`[socket] Joined interview ${interviewId} (created at ${createdAt.toISOString()})`);
+      console.log(`[socket] User ${currentUser.id} joined interview ${interviewId} (created at ${createdAt.toISOString()})`);
     } catch {
       console.error(`[socket] Interview ${id} not found`);
       socket.emit("error", { message: "Interview not found" });

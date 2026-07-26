@@ -17,7 +17,7 @@ const s3 = new S3Client({
 const BUCKET = process.env.S3_BUCKET_NAME ?? "intervyu-pdfs";
 
 /** Presigned URL TTL in seconds (15 minutes) */
-const PRESIGN_TTL = 15 * 60;
+const PRESIGN_TTL = 5 * 60;
 
 /**
  * Build a consistent S3 object key for a PDF.

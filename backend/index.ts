@@ -5,6 +5,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import { parseCookie } from "cookie";
 import { PORT } from "./config";
 import { createSpeechClient } from "./services/speech.service";
 import { registerSocketHandlers } from "./handlers/socket.handler";
@@ -36,6 +38,34 @@ const upload = multer({
     if (file.mimetype === "application/pdf") cb(null, true);
     else cb(new Error("Only PDF files are accepted"));
   },
+});
+
+// ── Socket.IO Authentication Middleware ────────────────────────────
+// Runs on every WebSocket handshake before io.on("connection").
+// Parses the HTTP-only accessToken cookie and rejects unauthenticated clients.
+io.use((socket, next) => {
+  try {
+    const rawCookies = socket.handshake.headers.cookie;
+    if (!rawCookies) {
+      return next(new Error("Unauthorized: No cookies found"));
+    }
+
+    const parsedCookies = parseCookie(rawCookies);
+    const token = parsedCookies.accessToken;
+
+    if (!token) {
+      return next(new Error("Unauthorized: Token missing"));
+    }
+
+    // Verify JWT and attach decoded payload to socket.data for use in handlers
+    const decoded = jwt.verify(token, process.env.SECRET_KEY!);
+    socket.data.user = decoded;
+
+    next();
+  } catch (err) {
+    console.error("[socket auth] Handshake authentication failed:", err);
+    next(new Error("Unauthorized: Invalid or expired token"));
+  }
 });
 
 io.on("connection", (socket) => {

@@ -436,8 +436,18 @@ export default function InterviewPage({ params }: { params: Promise<{ id: string
         // Continue without video — interview still works
       });
 
-    const socket = io(BACKEND_URL);
+    const socket = io(BACKEND_URL, {
+      withCredentials: true, // Required to send HTTP-only JWT cookies during handshake
+    });
     socketRef.current = socket;
+
+    // Handle authentication rejections from the Socket.IO middleware
+    socket.on("connect_error", (err) => {
+      console.error("[socket] Connection failed:", err.message);
+      if (err.message.includes("Unauthorized")) {
+        window.location.href = "/login";
+      }
+    });
 
     socket.on("connect", () => {
       socket.emit("joinInterview", { interviewId });
