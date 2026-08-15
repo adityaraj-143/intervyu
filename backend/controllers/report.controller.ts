@@ -1,13 +1,14 @@
 import type { Request, Response } from "express";
 import { db } from "../db";
-import { generateReport } from "../services/report.service";
-import { MessageRole } from "../generated/prisma/enums";
+import { enqueueReportJob } from "../queue/report.queue";
+import { getRedis } from "../services/redis";
 import { getPdfUrl, pdfExists } from "../services/storage.service";
 
 /**
  * POST /api/v1/interview/:id/report
  * Triggers AI report generation for a completed interview.
  * Idempotent — returns cached report if one already exists.
+ * Otherwise enqueues a background job and returns 202.
  */
 export async function handleGenerateReport(req: Request, res: Response): Promise<void> {
   const id = req.params.id as string;
@@ -21,7 +22,10 @@ export async function handleGenerateReport(req: Request, res: Response): Promise
   try {
     const interview = await db.interview.findUnique({
       where: { id },
-      include: { messages: { orderBy: { createdAt: "asc" as const } } },
+      select: {
+        userId: true,
+        report: true,
+      },
     });
 
     if (!interview) {
@@ -40,46 +44,21 @@ export async function handleGenerateReport(req: Request, res: Response): Promise
       return;
     }
 
-    // Build transcript from messages
-    const transcript = interview.messages
-      .map((msg: { role: string; content: string }) => {
-        const role = msg.role === MessageRole.Interviewer ? "Interviewer" : "Candidate";
-        return `${role}: ${msg.content}`;
-      })
-      .join("\n\n");
+    // Enqueue background job for report generation
+    const jobId = await enqueueReportJob(id, userId);
+    console.log(`[Report] Enqueued report job ${jobId} for interview ${id}`);
 
-    if (!transcript.trim()) {
-      res.status(400).json({ error: "No transcript available for this interview" });
-      return;
-    }
-
-    // Generate report via LLM
-    const report = await generateReport(
-      transcript,
-      interview.interviewType as "Technical" | "HR",
-      interview.resumeSummary,
-      interview.jdSummary,
-    );
-
-    // Persist report and overall score
-    await db.interview.update({
-      where: { id },
-      data: {
-        report: report as any,
-        score: report.overallScore,
-      },
-    });
-
-    res.status(200).json({ report });
+    res.status(202).json({ status: "processing", jobId });
   } catch (err) {
-    console.error("[Report] Generation error:", err);
-    res.status(500).json({ error: "Failed to generate report" });
+    console.error("[Report] Enqueue error:", err);
+    res.status(500).json({ error: "Failed to start report generation" });
   }
 }
 
 /**
  * GET /api/v1/interview/:id/report
- * Fetches the stored report (or returns pending status).
+ * Fetches the stored report. If the report is still being generated,
+ * checks Redis for job status and returns it.
  */
 export async function handleGetReport(req: Request, res: Response): Promise<void> {
   const id = req.params.id as string;
@@ -116,19 +95,32 @@ export async function handleGetReport(req: Request, res: Response): Promise<void
       return;
     }
 
-    if (!interview.report) {
-      res.status(200).json({ status: "pending" });
+    // Report is ready — return it
+    if (interview.report) {
+      res.status(200).json({
+        status: "completed",
+        report: interview.report,
+        score: interview.score,
+        interviewType: interview.interviewType,
+        createdAt: interview.createdAt,
+        hasResume: !!interview.resumeUrl,
+        hasJd: !!interview.jdUrl,
+      });
       return;
     }
 
-    res.status(200).json({
-      report: interview.report,
-      score: interview.score,
-      interviewType: interview.interviewType,
-      createdAt: interview.createdAt,
-      hasResume: !!interview.resumeUrl,
-      hasJd: !!interview.jdUrl,
-    });
+    // Report not in DB yet — check Redis for job status
+    const redis = getRedis();
+    const statusRaw = await redis.get(`report:status:${id}`);
+
+    if (statusRaw) {
+      const statusData = JSON.parse(statusRaw);
+      res.status(200).json(statusData);
+      return;
+    }
+
+    // No report and no status — hasn't been triggered yet
+    res.status(200).json({ status: "pending" });
   } catch (err) {
     console.error("[Report] Fetch error:", err);
     res.status(500).json({ error: "Failed to fetch report" });

@@ -323,25 +323,93 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
     setError(null);
 
     try {
-      // Trigger report generation (idempotent)
+      // Trigger report generation (idempotent).
+      // Returns 200 with report if already cached, or 202 if enqueued.
       const genRes = await axios.post(
         `${BACKEND_URL}/api/v1/interview/${interviewId}/report`,
         {},
         { withCredentials: true }
       );
 
-      if (genRes.data.report) {
+      // If the report was already generated, use it directly
+      if (genRes.status === 200 && genRes.data.report) {
         setReport(genRes.data.report);
+        // Still fetch metadata + transcript
+        await fetchMetaAndTranscript();
+        setLoading(false);
+        return;
       }
 
-      // Fetch report metadata
+      // Report is being generated in the background — poll for completion
+      if (genRes.status === 202 || genRes.data.status === "processing") {
+        await pollForReport();
+        return;
+      }
+    } catch (err: any) {
+      console.error("[Report] Error:", err);
+      setError(err?.response?.data?.error || "Failed to generate report. Please try again.");
+      setLoading(false);
+    }
+  }, [interviewId]);
+
+  /** Poll GET /report every 3s until status is "completed" or "failed" */
+  const pollForReport = useCallback(async () => {
+    const POLL_INTERVAL_MS = 3000;
+    const MAX_POLLS = 60; // 3 minutes max
+
+    for (let i = 0; i < MAX_POLLS; i++) {
+      try {
+        const res = await axios.get(
+          `${BACKEND_URL}/api/v1/interview/${interviewId}/report`,
+          { withCredentials: true }
+        );
+
+        const { status } = res.data;
+
+        if (status === "completed" && res.data.report) {
+          setReport(res.data.report);
+          setInterviewMeta({
+            interviewType: res.data.interviewType,
+            createdAt: res.data.createdAt,
+            hasResume: res.data.hasResume,
+            hasJd: res.data.hasJd,
+          });
+          // Fetch transcript
+          await fetchTranscript();
+          setLoading(false);
+          return;
+        }
+
+        if (status === "failed") {
+          setError(res.data.error || "Report generation failed. Please try again.");
+          setLoading(false);
+          return;
+        }
+
+        // Still processing — wait and poll again
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      } catch (err: any) {
+        console.error("[Report] Poll error:", err);
+        setError("Failed to check report status. Please try again.");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Exhausted all polls
+    setError("Report generation is taking longer than expected. Please refresh the page.");
+    setLoading(false);
+  }, [interviewId]);
+
+  /** Fetch metadata and transcript (used when report is already cached) */
+  const fetchMetaAndTranscript = useCallback(async () => {
+    try {
       const metaRes = await axios.get(
         `${BACKEND_URL}/api/v1/interview/${interviewId}/report`,
         { withCredentials: true }
       );
 
       if (metaRes.data.report) {
-        setReport(metaRes.data.report);
         setInterviewMeta({
           interviewType: metaRes.data.interviewType,
           createdAt: metaRes.data.createdAt,
@@ -350,7 +418,15 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
         });
       }
 
-      // Fetch transcript
+      await fetchTranscript();
+    } catch (err) {
+      console.warn("[Report] Failed to fetch metadata:", err);
+    }
+  }, [interviewId]);
+
+  /** Fetch the interview transcript */
+  const fetchTranscript = useCallback(async () => {
+    try {
       const transRes = await axios.get(
         `${BACKEND_URL}/api/v1/interview/${interviewId}/transcript`,
         { withCredentials: true }
@@ -359,11 +435,8 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
       if (transRes.data.messages) {
         setTranscript(transRes.data.messages);
       }
-    } catch (err: any) {
-      console.error("[Report] Error:", err);
-      setError(err?.response?.data?.error || "Failed to generate report. Please try again.");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.warn("[Report] Failed to fetch transcript:", err);
     }
   }, [interviewId]);
 

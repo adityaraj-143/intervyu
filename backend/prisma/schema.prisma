@@ -44,6 +44,8 @@ model Interview {
   report         Json?
   messages       Message[]
   createdAt      DateTime        @default(now())
+
+  @@index([userId, createdAt])  // dashboard listing
 }
 
 model Message {
@@ -53,6 +55,8 @@ model Message {
   role        MessageRole
   content     String
   createdAt   DateTime    @default(now())
+
+  @@index([interviewId, createdAt])  // transcript queries
 }
 
 enum MessageRole {
