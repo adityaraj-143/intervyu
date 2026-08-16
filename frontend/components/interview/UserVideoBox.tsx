@@ -34,6 +34,7 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMutedRef = useRef(isMuted);
+  const hasFatalErrorRef = useRef(false);
 
   // Keep muted ref in sync
   useEffect(() => {
@@ -96,6 +97,8 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
 
     recognition.onend = () => {
       if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+      if (hasFatalErrorRef.current) return; // Stop infinite loop on fatal error
+
       restartTimeoutRef.current = setTimeout(() => {
         if (!isMutedRef.current) {
           startRecognition();
@@ -106,6 +109,9 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
     recognition.onerror = (event) => {
       if (event.error !== "no-speech" && event.error !== "aborted") {
         console.warn("[SpeechRecognition] error:", event.error);
+        if (event.error === "network" || event.error === "not-allowed") {
+          hasFatalErrorRef.current = true;
+        }
       }
     };
 

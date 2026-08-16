@@ -11,7 +11,7 @@ const accessTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
   sameSite: isProduction ? ("strict" as const) : ("lax" as const),
-  maxAge: 15 * 60 * 1000,
+  maxAge: 2 * 60 * 60 * 1000, // 2 hours
 };
 
 const refreshTokenCookieOptions = {
@@ -24,7 +24,7 @@ const refreshTokenCookieOptions = {
 export function createAuthTokens(payload: AuthPayload) {
   return {
     accessToken: jwt.sign(payload, process.env.SECRET_KEY!, {
-      expiresIn: "15m",
+      expiresIn: "2h",
     }),
     refreshToken: jwt.sign(payload, process.env.REFRESH_SECRET!, {
       expiresIn: "7d",
@@ -34,7 +34,7 @@ export function createAuthTokens(payload: AuthPayload) {
 
 export function createAccessToken(payload: AuthPayload) {
   return jwt.sign(payload, process.env.SECRET_KEY!, {
-    expiresIn: "15m",
+    expiresIn: "2h",
   });
 }
 
