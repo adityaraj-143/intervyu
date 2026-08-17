@@ -31,8 +31,8 @@ export async function enqueueReportJob(interviewId: string, userId: string): Pro
       jobId: `report-${interviewId}`,
       attempts: 3,
       backoff: { type: "exponential", delay: 2000 },
-      removeOnComplete: { age: 3600 },    // Keep completed jobs for 1 hour
-      removeOnFail: { age: 24 * 3600 },   // Keep failed jobs for 24 hours
+      removeOnComplete: { age: 3600, count: 500 },    // Keep completed jobs for 1 hour
+      removeOnFail: { age: 24 * 3600, count: 1000 },   // Keep failed jobs for 24 hours
     }
   );
   return job.id!;
