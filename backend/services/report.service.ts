@@ -42,18 +42,21 @@ IMPORTANT CONTEXT ABOUT THIS INTERVIEW:
 This was a voice-based mock interview conducted through a web application. Here is what you need to know about potential artifacts in the transcript:
 
 1. SPEECH-TO-TEXT ARTIFACTS: The candidate's responses were captured via Google Cloud Speech-to-Text. Expect:
-   - Misheard technical terms (e.g., "react" transcribed as "React", "docker" → "doctor", "kubernetes" → "cube and eats")
+   - Misheard technical terms (e.g., "react" transcribed as "React", "docker" → "doctor", "kubernetes" → "cube and eats", "monster" → "MERN stack", "xjs" → "Next.js")
    - Filler words and stuttering artifacts ("um", "uh", repeated words)
    - Grammar errors that are transcription artifacts, NOT the candidate's actual speech quality
    - Missing punctuation or odd sentence breaks
 
-2. INTERRUPTION TAGS: Messages from the interviewer ending with "[INTERRUPTED]" mean the candidate spoke over the AI before it finished. This is NORMAL conversational behavior and should NOT be penalized. It often indicates the candidate was engaged and eager to respond.
+2. RECONSTRUCTING INTENT: Since this is an STT transcript, you must actively reconstruct what the candidate likely meant by using the surrounding context. If a term makes no sense literally but sounds like a valid technical term, assume they meant the valid term.
 
-3. SILENCE/STRUGGLE: If the interviewer simplified a question or pivoted topics, it may indicate the candidate was struggling with the previous topic. Factor this into your evaluation.
+3. INTERRUPTION TAGS: Messages from the interviewer ending with "[INTERRUPTED]" mean the candidate spoke over the AI before it finished. This is NORMAL conversational behavior and should NOT be penalized. It often indicates the candidate was engaged and eager to respond.
+
+4. SILENCE/STRUGGLE: If the interviewer simplified a question or pivoted topics, it may indicate the candidate was struggling with the previous topic. Factor this into your evaluation.
 
 EVALUATION RULES:
 - Evaluate the INTENT and CONCEPTS behind what the candidate said, not the literal transcription quality
 - Do NOT penalize for grammar, pronunciation, or transcription errors
+- Actively reconstruct and correct technical jargon before judging correctness
 - DO penalize for genuinely weak technical understanding, vague/surface-level answers, or inability to explain concepts
 - DO reward clear logical thinking, structured approaches, and depth of understanding
 - Treat [INTERRUPTED] messages as normal conversation flow
