@@ -38,14 +38,14 @@ export default function AnalyticsPreview() {
         <div>
           <p className="iv-label mb-1">Interview Analytics</p>
           <h3 className="iv-heading-sm" style={{ fontSize: "1rem" }}>
-            Performance Breakdown
+            Post-Interview Feedback
           </h3>
         </div>
         <div
           className="px-3 py-1 rounded-full"
           style={{
-            background: "rgba(82, 102, 255, 0.08)",
-            border: "1px solid rgba(82, 102, 255, 0.15)",
+            background: "rgba(var(--iv-accent-rgb), 0.08)",
+            border: "1px solid rgba(var(--iv-accent-rgb), 0.15)",
             color: "hsl(var(--iv-accent))",
             fontSize: "0.75rem",
             fontWeight: 500,
@@ -76,7 +76,7 @@ export default function AnalyticsPreview() {
                 <motion.div
                   className="h-full rounded-full"
                   style={{
-                    background: `linear-gradient(90deg, hsl(230, 100%, 66%), hsl(250, 100%, 72%))`,
+                    background: `linear-gradient(90deg, hsl(239, 84%, 67%), hsl(250, 75%, 70%))`,
                     transformOrigin: "left",
                   }}
                   initial={{ scaleX: 0 }}
@@ -125,8 +125,8 @@ export default function AnalyticsPreview() {
               />
               <defs>
                 <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="hsl(230, 100%, 66%)" />
-                  <stop offset="100%" stopColor="hsl(270, 100%, 72%)" />
+                  <stop offset="0%" stopColor="hsl(239, 84%, 67%)" />
+                  <stop offset="100%" stopColor="hsl(270, 80%, 70%)" />
                 </linearGradient>
               </defs>
             </svg>

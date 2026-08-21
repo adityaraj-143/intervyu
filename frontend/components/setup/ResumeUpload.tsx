@@ -81,13 +81,13 @@ export default function ResumeUpload({ file, onFileChange }: ResumeUploadProps) 
             }}
             style={{
               border: `1.5px dashed ${
-                isDragging ? "rgba(82, 102, 255, 0.5)" : "var(--iv-border-medium)"
+                isDragging ? "rgba(var(--iv-accent-rgb), 0.5)" : "var(--iv-border-medium)"
               }`,
               borderRadius: 16,
-              padding: "40px 24px",
+              padding: "28px 20px",
               textAlign: "center",
               background: isDragging
-                ? "rgba(82, 102, 255, 0.04)"
+                ? "rgba(var(--iv-accent-rgb), 0.04)"
                 : "var(--iv-glass-bg)",
               transition: "all 0.3s ease",
             }}
@@ -99,9 +99,9 @@ export default function ResumeUpload({ file, onFileChange }: ResumeUploadProps) 
                 width: 52,
                 height: 52,
                 background: isDragging
-                  ? "rgba(82, 102, 255, 0.12)"
-                  : "rgba(82, 102, 255, 0.06)",
-                border: "1px solid rgba(82, 102, 255, 0.1)",
+                  ? "rgba(var(--iv-accent-rgb), 0.12)"
+                  : "rgba(var(--iv-accent-rgb), 0.06)",
+                border: "1px solid rgba(var(--iv-accent-rgb), 0.1)",
                 transition: "all 0.3s ease",
               }}
             >
@@ -169,7 +169,7 @@ export default function ResumeUpload({ file, onFileChange }: ResumeUploadProps) 
               display: "flex",
               alignItems: "center",
               gap: 16,
-              borderColor: "rgba(82, 102, 255, 0.15)",
+              borderColor: "rgba(var(--iv-accent-rgb), 0.15)",
             }}
           >
             {/* File icon */}
@@ -178,8 +178,8 @@ export default function ResumeUpload({ file, onFileChange }: ResumeUploadProps) 
               style={{
                 width: 44,
                 height: 44,
-                background: "rgba(82, 102, 255, 0.08)",
-                border: "1px solid rgba(82, 102, 255, 0.12)",
+                background: "rgba(var(--iv-accent-rgb), 0.08)",
+                border: "1px solid rgba(var(--iv-accent-rgb), 0.12)",
               }}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">

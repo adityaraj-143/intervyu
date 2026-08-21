@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 
 interface MagneticButtonProps {
   children: React.ReactNode;
@@ -57,7 +57,7 @@ export default function MagneticButton({
   const baseStyles =
     variant === "primary"
       ? {
-          background: `linear-gradient(135deg, hsl(230, 100%, 66%) 0%, hsl(250, 100%, 66%) 100%)`,
+          background: `linear-gradient(135deg, hsl(239, 84%, 67%) 0%, hsl(250, 75%, 60%) 100%)`,
           color: "#fff",
           border: "none",
         }
@@ -102,7 +102,7 @@ export default function MagneticButton({
             className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+                "linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)",
               animation: "iv-shimmer 1.5s ease-in-out infinite",
             }}
           />

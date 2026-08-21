@@ -4,9 +4,57 @@ import { db } from "../db";
 import { PDFParse } from "pdf-parse";
 import { summarizeJD, summarizeResume } from "../services/summarize.service";
 import { buildSystemPrompt } from "../utils/buildSystemPrompt";
+import { savePdf } from "../services/storage.service";
+
+/**
+ * GET /api/v1/interview
+ * Lists all interviews for the authenticated user, ordered by most recent first.
+ */
+export async function handleListInterviews(req: Request, res: Response): Promise<void> {
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const interviews = await db.interview.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        interviewType: true,
+        status: true,
+        score: true,
+        report: true,
+        createdAt: true,
+      },
+    });
+
+    // Return lightweight report data (summary + categories only)
+    const result = interviews.map((iv) => {
+      const report = iv.report as Record<string, unknown> | null;
+      return {
+        id: iv.id,
+        interviewType: iv.interviewType,
+        status: iv.status,
+        score: iv.score,
+        createdAt: iv.createdAt,
+        reportSummary: report?.summary ?? null,
+        reportCategories: report?.categories ?? null,
+      };
+    });
+
+    res.status(200).json({ interviews: result });
+  } catch (err) {
+    console.error("[Interview] List error:", err);
+    res.status(500).json({ error: "Failed to list interviews" });
+  }
+}
 
 export async function handleInterviewStart(req: Request, res: Response): Promise<void> {
-  const { githubUsername, jobDescriptionText, interviewType: rawType} = req.body;
+  const { githubUsername, jobDescriptionText, interviewType: rawType, voiceId } = req.body;
   const userId = req.user?.userId;
 
   if (!userId) {
@@ -103,9 +151,38 @@ export async function handleInterviewStart(req: Request, res: Response): Promise
       jdSummary,
       resumeSummary,
       systemPrompt,
+      voiceId: voiceId || "JBFqnCBsd6RMkjVDRZzb",
       interviewType: isTechnical ? "Technical" : "HR",
     },
   });
 
   res.status(200).json({ interviewId: interview.id });
+
+  // ── Save PDFs to storage (fire-and-forget, non-blocking) ────────────
+  (async () => {
+    try {
+      let resumeUrl: string | null = null;
+      let jdUrl: string | null = null;
+
+      if (resumePdfFile?.buffer) {
+        resumeUrl = await savePdf(interview.id, "resume", resumePdfFile.buffer);
+      }
+      if (jdPdfFile?.buffer) {
+        jdUrl = await savePdf(interview.id, "jd", jdPdfFile.buffer);
+      }
+
+      if (resumeUrl || jdUrl) {
+        await db.interview.update({
+          where: { id: interview.id },
+          data: {
+            ...(resumeUrl && { resumeUrl }),
+            ...(jdUrl && { jdUrl }),
+          },
+        });
+        console.log(`[interview] PDFs saved for ${interview.id}`);
+      }
+    } catch (err) {
+      console.error(`[interview] Failed to save PDFs for ${interview.id}:`, err);
+    }
+  })();
 }

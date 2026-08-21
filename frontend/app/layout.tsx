@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
@@ -19,6 +14,8 @@ export const metadata: Metadata = {
     "Practice with an AI interviewer that analyzes your GitHub, adapts in real-time, and provides actionable feedback across system design, data structures, and communication.",
 };
 
+import { Providers } from "@/components/providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,11 +24,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${outfit.variable} h-full antialiased dark font-sans`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster/>
+        <Providers>
+          {children}
+          <Toaster/>
+        </Providers>
       </body>
     </html>
   );

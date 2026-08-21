@@ -2,23 +2,30 @@
 import express from "express";
 import http from "http";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import multer from "multer";
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import { parseCookie } from "cookie";
 import { PORT } from "./config";
 import { createSpeechClient } from "./services/speech.service";
 import { registerSocketHandlers } from "./handlers/socket.handler";
 import { handleInterviewStart } from "./controllers/interview.controller";
 import authRoutes from './routes/auth.routes';
+import interviewRoutes from './routes/interview.routes';
 import { authenticateJWT } from "./middlewares/auth.middleware";
 
 const app = express();
 const server = http.createServer(app);
 
+const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
+
 const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: { origin: FRONTEND_URL, credentials: true },
 });
 
-app.use(cors());
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+app.use(cookieParser());
 app.use(express.json());
 
 const speechClient = createSpeechClient();
@@ -31,6 +38,34 @@ const upload = multer({
     if (file.mimetype === "application/pdf") cb(null, true);
     else cb(new Error("Only PDF files are accepted"));
   },
+});
+
+// ── Socket.IO Authentication Middleware ────────────────────────────
+// Runs on every WebSocket handshake before io.on("connection").
+// Parses the HTTP-only accessToken cookie and rejects unauthenticated clients.
+io.use((socket, next) => {
+  try {
+    const rawCookies = socket.handshake.headers.cookie;
+    if (!rawCookies) {
+      return next(new Error("Unauthorized: No cookies found"));
+    }
+
+    const parsedCookies = parseCookie(rawCookies);
+    const token = parsedCookies.accessToken;
+
+    if (!token) {
+      return next(new Error("Unauthorized: Token missing"));
+    }
+
+    // Verify JWT and attach decoded payload to socket.data for use in handlers
+    const decoded = jwt.verify(token, process.env.SECRET_KEY!);
+    socket.data.user = decoded;
+
+    next();
+  } catch (err) {
+    console.error("[socket auth] Handshake authentication failed:", err);
+    next(new Error("Unauthorized: Invalid or expired token"));
+  }
 });
 
 io.on("connection", (socket) => {
@@ -49,6 +84,7 @@ app.post(
 );
 
 app.use('/api/v1/auth/', authRoutes)
+app.use('/api/v1/interview', interviewRoutes)
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

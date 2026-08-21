@@ -34,12 +34,18 @@ model Interview {
   githubMetadata Json?
   jdSummary      String?
   resumeSummary  String?
+  resumeUrl      String?
+  jdUrl          String?
   systemPrompt   String
+  voiceId        String          @default("JBFqnCBsd6RMkjVDRZzb")
   interviewType  InterviewType   @default(Technical)
   status         InterviewStatus @default(Inprogress)
   score          Int             @default(0)
+  report         Json?
   messages       Message[]
   createdAt      DateTime        @default(now())
+
+  @@index([userId, createdAt])  // dashboard listing
 }
 
 model Message {
@@ -49,6 +55,8 @@ model Message {
   role        MessageRole
   content     String
   createdAt   DateTime    @default(now())
+
+  @@index([interviewId, createdAt])  // transcript queries
 }
 
 enum MessageRole {

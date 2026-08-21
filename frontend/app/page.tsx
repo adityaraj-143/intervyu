@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import LandingHero from "@/components/landing/LandingHero";
 import FeatureCard from "@/components/landing/FeatureCard";
@@ -8,6 +9,7 @@ import Testimonials from "@/components/landing/Testimonials";
 import AnalyticsPreview from "@/components/landing/AnalyticsPreview";
 import RolesMarquee from "@/components/landing/RolesMarquee";
 import MagneticButton from "@/components/landing/MagneticButton";
+import { getMe, logoutUser } from "@/lib/api";
 
 const features = [
   {
@@ -55,14 +57,138 @@ const features = [
 ];
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    getMe()
+      .then((res) => {
+        setUser(res.data);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleLogout = async () => {
+    await logoutUser();
+    setUser(null);
+  };
+
   return (
     <main
+      className="iv-noise"
       style={{
         background: "var(--iv-surface-0)",
         color: "var(--iv-text-primary)",
         overflow: "hidden",
       }}
     >
+      {/* ── Sticky Nav ─────────────────────────────────────────────── */}
+      <nav
+        className="fixed top-0 left-0 right-0 flex items-center justify-between px-6 md:px-10 py-3 transition-all duration-300"
+        style={{
+          zIndex: 50,
+          background: scrolled ? "rgba(15, 17, 23, 0.8)" : "transparent",
+          backdropFilter: scrolled ? "blur(20px) saturate(1.4)" : "none",
+          borderBottom: scrolled ? "1px solid var(--iv-border-subtle)" : "1px solid transparent",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className="rounded-lg flex items-center justify-center"
+            style={{
+              width: 28,
+              height: 28,
+              background: "rgba(var(--iv-accent-rgb), 0.1)",
+              border: "1px solid rgba(var(--iv-accent-rgb), 0.15)",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="4" width="12" height="8" rx="2" stroke="hsl(var(--iv-accent))" strokeWidth="1.2"/>
+              <path d="M4 4V3a3 3 0 016 0v1" stroke="hsl(var(--iv-accent))" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--iv-text-primary)" }}>
+            intervyu
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {!loading && user ? (
+            <>
+              <span className="text-sm font-medium mr-2" style={{ color: "var(--iv-text-secondary)" }}>
+                {user.name}
+              </span>
+              <a
+                href="/dashboard"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200 hover:brightness-125"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "#fff",
+                  background: "rgba(var(--iv-accent-rgb), 0.15)",
+                  border: "1px solid rgba(var(--iv-accent-rgb), 0.25)",
+                }}
+              >
+                Dashboard
+              </a>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/5"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "var(--iv-text-secondary)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Sign Out
+              </button>
+            </>
+          ) : !loading && !user ? (
+            <>
+              <a
+                href="/login"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/5"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "var(--iv-text-secondary)",
+                  background: "transparent",
+                }}
+              >
+                Sign In
+              </a>
+              <a
+                href="/signup"
+                className="no-underline px-4 py-2 rounded-lg transition-all duration-200 hover:brightness-125"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  color: "#fff",
+                  background: "rgba(var(--iv-accent-rgb), 0.15)",
+                  border: "1px solid rgba(var(--iv-accent-rgb), 0.25)",
+                }}
+              >
+                Sign Up
+              </a>
+            </>
+          ) : null}
+        </div>
+      </nav>
+
       {/* ── Section 1: Hero ──────────────────────────────────────────── */}
       <div className="relative">
         <LandingHero />
@@ -99,8 +225,8 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.9, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              Practice with an AI interviewer that analyzes your GitHub, adapts in real-time,
-              and provides actionable feedback.
+              Practice with an AI interviewer that analyzes your GitHub, adapts questions
+              in real-time, and helps you improve through voice-based mock sessions.
             </motion.p>
 
             <motion.div
@@ -120,11 +246,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Section 2: Pipeline Visualization ────────────────────────── */}
+      {/* ── Section 2: How It Works ──────────────────────────────────── */}
       <section className="iv-section" id="how-it-works">
         <div className="iv-container">
           <motion.div
-            className="text-center mb-16"
+            className="text-center mb-14"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -146,7 +272,7 @@ export default function Home() {
       <section className="iv-section" id="features">
         <div className="iv-container">
           <motion.div
-            className="text-center mb-16"
+            className="text-center mb-14"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -178,7 +304,7 @@ export default function Home() {
       <section className="iv-section" id="analytics">
         <div className="iv-container">
           <motion.div
-            className="text-center mb-16"
+            className="text-center mb-14"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -198,43 +324,33 @@ export default function Home() {
         <div className="iv-divider" />
       </div>
 
-      {/* ── Section 5: Roles Supported ───────────────────────────────── */}
-      <section className="iv-section-sm" id="roles">
+      {/* ── Section 5: Why Intervyu + Roles ──────────────────────────── */}
+      <section className="iv-section" id="why">
         <div className="iv-container">
           <motion.div
-            className="text-center mb-10"
+            className="text-center mb-14"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.6 }}
           >
-            <p className="iv-label mb-3">Roles</p>
-            <h2 className="iv-heading-md">Prepared for every engineering role</h2>
-          </motion.div>
-
-          <RolesMarquee />
-        </div>
-      </section>
-
-      <div className="iv-container">
-        <div className="iv-divider" />
-      </div>
-
-      {/* ── Section 6: Testimonials ──────────────────────────────────── */}
-      <section className="iv-section" id="testimonials">
-        <div className="iv-container">
-          <motion.div
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="iv-label mb-3">Testimonials</p>
-            <h2 className="iv-heading-md">What engineers are saying</h2>
+            <p className="iv-label mb-3">Why Intervyu</p>
+            <h2 className="iv-heading-md">Built different from day one</h2>
           </motion.div>
 
           <Testimonials />
+
+          {/* Roles marquee integrated here */}
+          <motion.div
+            className="mt-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6 }}
+          >
+            <p className="iv-label text-center mb-6">Prepared for every engineering role</p>
+            <RolesMarquee />
+          </motion.div>
         </div>
       </section>
 
@@ -242,7 +358,7 @@ export default function Home() {
         <div className="iv-divider" />
       </div>
 
-      {/* ── Section 7: Final CTA ─────────────────────────────────────── */}
+      {/* ── Section 6: Final CTA ─────────────────────────────────────── */}
       <section className="iv-section" id="cta">
         <div className="iv-container text-center">
           <motion.div
@@ -280,8 +396,8 @@ export default function Home() {
       <footer
         className="iv-container"
         style={{
-          paddingTop: 32,
-          paddingBottom: 32,
+          paddingTop: 24,
+          paddingBottom: 24,
           borderTop: "1px solid var(--iv-border-subtle)",
         }}
       >
@@ -292,8 +408,8 @@ export default function Home() {
               style={{
                 width: 28,
                 height: 28,
-                background: "rgba(82, 102, 255, 0.1)",
-                border: "1px solid rgba(82, 102, 255, 0.15)",
+                background: "rgba(var(--iv-accent-rgb), 0.1)",
+                border: "1px solid rgba(var(--iv-accent-rgb), 0.15)",
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

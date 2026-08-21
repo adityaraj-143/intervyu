@@ -34,6 +34,7 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMutedRef = useRef(isMuted);
+  const hasFatalErrorRef = useRef(false);
 
   // Keep muted ref in sync
   useEffect(() => {
@@ -96,6 +97,8 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
 
     recognition.onend = () => {
       if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+      if (hasFatalErrorRef.current) return; // Stop infinite loop on fatal error
+
       restartTimeoutRef.current = setTimeout(() => {
         if (!isMutedRef.current) {
           startRecognition();
@@ -106,6 +109,9 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
     recognition.onerror = (event) => {
       if (event.error !== "no-speech" && event.error !== "aborted") {
         console.warn("[SpeechRecognition] error:", event.error);
+        if (event.error === "network" || event.error === "not-allowed") {
+          hasFatalErrorRef.current = true;
+        }
       }
     };
 
@@ -144,7 +150,7 @@ export default function UserVideoBox({ stream, isCameraOff, isMuted }: UserVideo
 
   return (
     <div
-      className="relative rounded-[20px] overflow-hidden border transition-[border-color] duration-400 ease-in-out flex-[0.8] flex items-center justify-center max-md:flex-1 hover:border-[var(--iv-border-medium)]"
+      className="relative rounded-[20px] overflow-hidden border transition-[border-color] duration-400 ease-in-out flex-[1.15] flex items-center justify-center max-md:flex-1 hover:border-[var(--iv-border-medium)]"
       style={{
         background: "var(--iv-surface-2)",
         borderColor: "var(--iv-border-subtle)",
